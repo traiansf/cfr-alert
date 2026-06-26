@@ -15,6 +15,8 @@ class InfoferSession(
             http.get("$baseUrl$path") {
                 header(HttpHeaders.UserAgent, USER_AGENT)
             }.bodyAsText()
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             throw InfoferNetworkException("GET $path failed", e)
         }
@@ -34,6 +36,8 @@ class InfoferSession(
                 contentType(ContentType.Application.FormUrlEncoded)
                 setBody(params.formUrlEncode())
             }.bodyAsText()
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             throw InfoferNetworkException("POST $path failed", e)
         }

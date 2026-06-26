@@ -5,8 +5,12 @@ import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.http.*
 import kotlinx.coroutines.test.runTest
+import ro.trenuri.infofer.InfoferParseException
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class InfoferSessionTest {
@@ -22,8 +26,10 @@ class InfoferSessionTest {
 
     @Test fun post_includes_tokens_and_antiabuse_fields() = runTest {
         var captured = ""
+        var capturedUserAgent: String? = null
         val engine = MockEngine { req ->
             captured = (req.body as io.ktor.http.content.TextContent).text
+            capturedUserAgent = req.headers[HttpHeaders.UserAgent]
             respond("<html>ok</html>", HttpStatusCode.OK)
         }
         val session = InfoferSession(HttpClient(engine))
@@ -37,5 +43,15 @@ class InfoferSessionTest {
         assertTrue(captured.contains("__RequestVerificationToken=TOK123"))
         assertTrue(captured.contains("ConfirmationKey=CONF456"))
         assertTrue(captured.contains("IsReCaptchaFailed=False"))
+        assertTrue(captured.contains("ReCaptcha="))
+        assertTrue(captured.contains("IsSearchWanted=False"))
+        assertNotNull(capturedUserAgent)
+        assertFalse(capturedUserAgent!!.isBlank())
+    }
+
+    @Test fun extractTokens_throws_when_verification_token_absent() {
+        assertFailsWith<InfoferParseException> {
+            extractTokens("<form><input name=\"ConfirmationKey\" value=\"C\"/></form>")
+        }
     }
 }
