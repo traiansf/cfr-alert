@@ -1,9 +1,11 @@
 package ro.trenuri.infofer.parse
 
 import ro.trenuri.infofer.Fixtures
+import ro.trenuri.infofer.InfoferParseException
 import ro.trenuri.infofer.model.StopStatus
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class TrainResultParserTest {
@@ -35,5 +37,19 @@ class TrainResultParserTest {
     @Test fun on_time_stops_have_on_time_status() {
         val origin = itinerary.branches.first().stops.first()
         assertEquals(StopStatus.ON_TIME, origin.status)
+    }
+
+    @Test fun throws_when_branch_has_no_stops() {
+        val html = """
+            <html><body>
+              <div id="div-stations-branch-1">
+                <h4>Parcurs tren A–B</h4>
+                <ul class="list-group"></ul>
+              </div>
+            </body></html>
+        """.trimIndent()
+        assertFailsWith<InfoferParseException> {
+            TrainResultParser.parse(html, "1")
+        }
     }
 }

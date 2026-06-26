@@ -34,6 +34,7 @@ object TrainResultParser {
         val to = if (dashIdx != null) headerBody.substring(dashIdx + 1).trim() else ""
         val delay = parseDelay(el)
         val stops = el.select("li.list-group-item").map { parseStop(it) }
+        if (stops.isEmpty()) throw InfoferParseException("branch '$from–$to' has no stops")
         return TrainBranch(from, to, delay, stops)
     }
 
