@@ -10,7 +10,7 @@ class NearestStationsParserTest {
 
     @Test fun finds_nearest_stations() {
         assertTrue(stations.isNotEmpty())
-        assertEquals("Bucureşti Nord", stations.first().name)
+        assertEquals("București Nord", stations.first().name)
         assertEquals("Bucuresti-Nord", stations.first().slug)
     }
 }
