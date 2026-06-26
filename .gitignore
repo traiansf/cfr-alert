@@ -1,0 +1,22 @@
+# Playwright MCP scratch (recon captures)
+.playwright-mcp/
+
+# Gradle
+.gradle/
+build/
+**/build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Android
+local.properties
+*.apk
+*.aab
+.cxx/
+
+# IDE
+.idea/
+*.iml
+.kotlin/
+
+# OS
+.DS_Store
