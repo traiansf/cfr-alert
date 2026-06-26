@@ -1,7 +1,9 @@
 package ro.trenuri.infofer.parse
 
 import ro.trenuri.infofer.Fixtures
+import ro.trenuri.infofer.InfoferParseException
 import kotlin.test.Test
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class ItinerariesParserTest {
@@ -18,5 +20,13 @@ class ItinerariesParserTest {
 
     @Test fun direct_options_have_zero_changes() {
         assertTrue(options.any { it.changes == 0 })
+    }
+
+    @Test fun throws_when_containers_present_but_no_legs() {
+        // One option container matching li[id^=li-itinerary-] but with no parseable legs (no detail section).
+        val html = """<ul><li id="li-itinerary-1"></li></ul>"""
+        assertFailsWith<InfoferParseException> {
+            ItinerariesParser.parse(html)
+        }
     }
 }

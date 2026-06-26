@@ -19,6 +19,7 @@ object ItinerariesParser {
         if (optionEls.isEmpty()) throw InfoferParseException("no itinerary options found")
         return optionEls.mapNotNull { runCatching { parseOption(it) }.getOrNull() }
             .filter { it.legs.isNotEmpty() }
+            .ifEmpty { throw InfoferParseException("found ${optionEls.size} option containers but none yielded parseable legs") }
     }
 
     private fun parseOption(el: Element): ItineraryOption {
