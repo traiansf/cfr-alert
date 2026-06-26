@@ -38,10 +38,11 @@ object TrainResultParser {
         return TrainBranch(from, to, delay, stops)
     }
 
-    private fun parseDelay(branch: Element): Delay {
-        // Find the paragraph that contains the stopwatch icon
+    private fun parseDelay(branch: Element): Delay? {
+        // Find the paragraph that contains the stopwatch icon.
+        // If there is no such paragraph, live data is unavailable — return null (unknown), NOT on-time.
         val p = branch.select("p").firstOrNull { it.selectFirst("i.fa-stopwatch") != null }
-            ?: return Delay(0, null)
+            ?: return null
         val text = p.text()
         val mins = DELAY_MIN.find(text)?.groupValues?.get(1)?.toIntOrNull()
         val reported = REPORTED.find(text)?.groupValues?.get(1)

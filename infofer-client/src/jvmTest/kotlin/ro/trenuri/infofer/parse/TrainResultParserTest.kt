@@ -6,6 +6,7 @@ import ro.trenuri.infofer.model.StopStatus
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class TrainResultParserTest {
@@ -37,6 +38,25 @@ class TrainResultParserTest {
     @Test fun on_time_stops_have_on_time_status() {
         val origin = itinerary.branches.first().stops.first()
         assertEquals(StopStatus.ON_TIME, origin.status)
+    }
+
+    @Test fun delay_is_null_when_no_live_data() {
+        // A branch with no stopwatch paragraph must return null delay (unknown), not Delay(0, null) (on-time).
+        val html = """
+            <html><body>
+              <div id="div-stations-branch-1">
+                <h4>Parcurs tren A–B</h4>
+                <ul class="list-group">
+                  <li class="list-group-item">
+                    <a href="/ro-RO/Statie/A">A</a>
+                    <div class="text-1-3rem text-right">10:00</div>
+                  </li>
+                </ul>
+              </div>
+            </body></html>
+        """.trimIndent()
+        val result = TrainResultParser.parse(html, "X")
+        assertNull(result.branches.first().delay)
     }
 
     @Test fun throws_when_branch_has_no_stops() {

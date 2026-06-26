@@ -13,4 +13,11 @@ class LiveSmokeTest {
         val stations = client.findNearestStations(44.4268, 26.1025)
         assertTrue(stations.isNotEmpty())
     }
+
+    @Test fun itineraries_live() = runTest {
+        if (!enabled) return@runTest
+        val client = defaultInfoferClient()
+        val itineraries = client.searchItineraries("Bucuresti-Nord", "Brasov", 2026, 6, 26)
+        assertTrue(itineraries.isNotEmpty())
+    }
 }
