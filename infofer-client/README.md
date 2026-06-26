@@ -32,9 +32,9 @@ suspend fun getStationBoard(
 suspend fun findNearestStations(latitude: Double, longitude: Double): List<Station>
 ```
 
-Station names passed to `getTrain`, `searchItineraries`, and `getStationBoard` must be the URL-slug form used by Infofer (e.g., `"Bucuresti-Nord"` not `"București Nord"`). Use `Station.slug` from `findNearestStations` results, or apply the `stationSlug()` helper from `ro.trenuri.infofer.util`.
+Station names passed to `searchItineraries` and `getStationBoard` must be the URL-slug form used by Infofer (e.g., `"Bucuresti-Nord"` not `"București Nord"`). Use `Station.slug` from `findNearestStations` results, or apply the `stationSlug()` helper from `ro.trenuri.infofer.util`.
 
-### `defaultInfoferClient()` (JVM / Android)
+### `defaultInfoferClient()` (JVM)
 
 ```kotlin
 // jvmMain — ro.trenuri.infofer
@@ -77,7 +77,8 @@ commonMain
  ├─ parse/TrainResultParser.kt
  ├─ parse/ItinerariesParser.kt
  ├─ parse/StationBoardParser.kt
- └─ parse/NearestStationsParser.kt
+ ├─ parse/NearestStationsParser.kt
+ └─ util/Text.kt               (stationSlug, foldDiacritics, formatInfoferDate, parseCategory)
 
 jvmMain
  └─ InfoferClientFactory.kt   (defaultInfoferClient() using Ktor CIO engine)

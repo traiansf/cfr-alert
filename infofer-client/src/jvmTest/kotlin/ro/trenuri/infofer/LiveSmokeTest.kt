@@ -1,7 +1,6 @@
 package ro.trenuri.infofer
 
 import kotlinx.coroutines.test.runTest
-import ro.trenuri.infofer.model.BoardKind
 import kotlin.test.Test
 import kotlin.test.assertTrue
 
