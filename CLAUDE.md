@@ -103,6 +103,10 @@ Reference parsers (don't depend on them; use for guidance):
 
 - Unit-test the data-layer parsers against **saved HTML fixtures** (capture real
   responses; never hit the live site in CI).
+- **Captured fixtures are immutable ground truth.** They must reflect exactly what
+  infofer returns. If a test disagrees with a fixture, the test (or the parser) is
+  wrong — fix those, NEVER edit the fixture to make a test pass. Re-capture a
+  fixture only when intentionally refreshing it against the live site.
 - Unit-test the alarm recompute/reschedule logic with mocked client data.
 - For behavior changes, add tests for the changed behavior before claiming done.
 
