@@ -23,6 +23,10 @@ class TrainRepository(
                 TrainResult.NetworkError
             } catch (e: InfoferParseException) {
                 TrainResult.ParseError
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                TrainResult.ParseError
             }
         }
 }

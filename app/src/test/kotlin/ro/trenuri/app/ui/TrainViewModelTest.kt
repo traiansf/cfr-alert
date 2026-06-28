@@ -74,4 +74,22 @@ class TrainViewModelTest {
         advanceUntilIdle()
         assertEquals(TrainUiState.Error("net"), vm.state.value)
     }
+
+    @Test
+    fun second_search_cancels_first_so_only_second_train_is_loaded() = runTest {
+        val loaded = mutableListOf<String>()
+        val branch = ro.trenuri.infofer.model.TrainBranch("X", "Y", delay = null, stops = emptyList())
+        val repo = TrainRepository(
+            { number, _, _, _ ->
+                loaded.add(number)
+                TrainItinerary(number, ro.trenuri.infofer.model.TrainCategory.R, listOf(branch))
+            },
+            Dispatchers.Unconfined,
+        )
+        val vm = TrainViewModel(repo, fixedClock, testMessages)
+        vm.search("A")
+        vm.search("B")
+        advanceUntilIdle()
+        assertEquals(listOf("B"), loaded)
+    }
 }

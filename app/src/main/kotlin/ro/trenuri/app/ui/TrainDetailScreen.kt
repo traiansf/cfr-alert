@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import ro.trenuri.infofer.model.StopStatus
 import ro.trenuri.infofer.model.TrainBranch
 import ro.trenuri.infofer.model.TrainItinerary
 import ro.trenuri.infofer.model.TrainStop
@@ -89,10 +90,21 @@ private fun BranchHeader(branch: TrainBranch) {
 
 @Composable
 private fun StopRow(stop: TrainStop) {
-    val time = stop.arrival ?: stop.departure ?: ""
-    val track = stop.track?.let { "  linia $it" } ?: ""
+    val times = listOfNotNull(stop.arrival, stop.departure).joinToString(" / ")
+    val details = buildList {
+        stop.track?.let { add("linia $it") }
+        stop.km?.let { add("km $it") }
+    }.joinToString("  ")
+    val statusColor = when (stop.status) {
+        StopStatus.ON_TIME -> Green
+        StopStatus.DELAYED -> Red
+        StopStatus.UNKNOWN -> Color.Unspecified
+    }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(time)
-        Text(stop.station.name + track, modifier = Modifier.weight(1f))
+        Text(times, color = statusColor)
+        Text(
+            text = stop.station.name + if (details.isNotEmpty()) "  $details" else "",
+            modifier = Modifier.weight(1f),
+        )
     }
 }

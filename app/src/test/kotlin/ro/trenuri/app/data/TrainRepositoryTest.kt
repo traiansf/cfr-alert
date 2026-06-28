@@ -47,4 +47,10 @@ class TrainRepositoryTest {
         val repo = TrainRepository({ _, _, _, _ -> throw InfoferTrainNotFoundException("x") })
         assertEquals(TrainResult.NotFound, repo.load("9999999", 2026, 6, 28))
     }
+
+    @Test
+    fun returns_parse_error_on_unexpected_exception() = runTest {
+        val repo = TrainRepository({ _, _, _, _ -> throw IllegalStateException("boom") })
+        assertEquals(TrainResult.ParseError, repo.load("5568", 2026, 6, 28))
+    }
 }
