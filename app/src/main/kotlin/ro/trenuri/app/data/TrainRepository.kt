@@ -5,6 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import ro.trenuri.infofer.InfoferNetworkException
 import ro.trenuri.infofer.InfoferParseException
+import ro.trenuri.infofer.InfoferTrainNotFoundException
 
 class TrainRepository(
     private val provider: TrainProvider,
@@ -16,6 +17,8 @@ class TrainRepository(
                 val itinerary = provider.getTrain(number, year, month, day)
                 if (itinerary.branches.isEmpty()) TrainResult.NotFound
                 else TrainResult.Success(itinerary)
+            } catch (e: InfoferTrainNotFoundException) {
+                TrainResult.NotFound
             } catch (e: InfoferNetworkException) {
                 TrainResult.NetworkError
             } catch (e: InfoferParseException) {

@@ -8,6 +8,7 @@ import kotlinx.coroutines.test.runTest
 import ro.trenuri.infofer.net.InfoferSession
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class InfoferClientTest {
@@ -25,6 +26,14 @@ class InfoferClientTest {
         val train = client.getTrain("5568", 2026, 6, 26)
         assertEquals("5568", train.trainNumber)
         assertEquals(2, train.branches.first().delay?.minutes)
+    }
+
+    @Test fun getTrain_throws_for_not_found_page() = runTest {
+        val notFoundPage = Fixtures.load("train-page-notfound-9999999.html")
+        val client = clientReturning(notFoundPage, "")
+        assertFailsWith<InfoferTrainNotFoundException> {
+            client.getTrain("9999999", 2026, 6, 28)
+        }
     }
 
     @Test fun searchItineraries_parses_fixture_result() = runTest {

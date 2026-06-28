@@ -3,6 +3,7 @@ package ro.trenuri.app.data
 import kotlinx.coroutines.test.runTest
 import ro.trenuri.infofer.InfoferNetworkException
 import ro.trenuri.infofer.InfoferParseException
+import ro.trenuri.infofer.InfoferTrainNotFoundException
 import ro.trenuri.infofer.model.TrainCategory
 import ro.trenuri.infofer.model.TrainItinerary
 import kotlin.test.Test
@@ -39,5 +40,11 @@ class TrainRepositoryTest {
     fun returns_parse_error_on_parse_exception() = runTest {
         val repo = TrainRepository({ _, _, _, _ -> throw InfoferParseException("bad html") })
         assertEquals(TrainResult.ParseError, repo.load("5568", 2026, 6, 28))
+    }
+
+    @Test
+    fun returns_not_found_on_train_not_found_exception() = runTest {
+        val repo = TrainRepository({ _, _, _, _ -> throw InfoferTrainNotFoundException("x") })
+        assertEquals(TrainResult.NotFound, repo.load("9999999", 2026, 6, 28))
     }
 }
