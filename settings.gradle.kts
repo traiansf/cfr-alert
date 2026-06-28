@@ -8,3 +8,4 @@ dependencyResolutionManagement {
 }
 
 include(":infofer-client")
+include(":app")
