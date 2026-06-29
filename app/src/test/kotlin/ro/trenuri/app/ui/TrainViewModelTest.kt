@@ -8,6 +8,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import ro.trenuri.app.data.TrainRepository
 import ro.trenuri.app.data.TrainResult
+import ro.trenuri.app.ui.common.AppDate
 import ro.trenuri.infofer.model.TrainBranch
 import ro.trenuri.infofer.model.TrainCategory
 import ro.trenuri.infofer.model.TrainItinerary
@@ -21,7 +22,7 @@ private val testMessages = object : ErrorMessages {
     override val network = "net"
     override val parse = "parse"
 }
-private val fixedClock = { Triple(2026, 6, 28) }
+private val fixedClock = { AppDate(2026, 6, 28) }
 
 private fun repoReturning(result: TrainResult) =
     TrainRepository({ _, _, _, _ ->
