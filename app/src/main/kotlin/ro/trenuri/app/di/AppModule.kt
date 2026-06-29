@@ -77,7 +77,7 @@ val appModule = module {
     }
     viewModel { StationPickerViewModel(get()) }
     viewModel { ItineraryViewModel(get(), get()) }
-    viewModel { BoardViewModel(get(), get()) }
+    viewModel { BoardViewModel(repository = get(), messages = get(), today = get(named("today"))) }
 
     // Per-tab query history — persisted via SharedPreferences
     single<QueryHistoryStore<TrainQuery>>(named("history_tren")) {

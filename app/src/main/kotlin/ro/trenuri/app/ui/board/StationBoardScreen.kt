@@ -157,15 +157,25 @@ private fun BoardEntryRow(
     kind: BoardKind,
     onTrainClick: (String) -> Unit,
 ) {
+    val estimatedTime = estimatedTimeOrNull(entry.scheduledTime, entry.delayMinutes)
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = entry.scheduledTime,
-            style = MaterialTheme.typography.bodyMedium,
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = entry.scheduledTime,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            if (estimatedTime != null) {
+                Text(
+                    text = " ($estimatedTime)",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+        }
         Surface(
             color = MaterialTheme.colorScheme.secondaryContainer,
             shape = MaterialTheme.shapes.small,
