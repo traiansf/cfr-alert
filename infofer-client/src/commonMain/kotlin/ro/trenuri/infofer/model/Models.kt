@@ -1,6 +1,11 @@
 package ro.trenuri.infofer.model
 
-data class Station(val name: String, val slug: String)
+data class Station(
+    val name: String,
+    val slug: String,
+    val lat: Double? = null,
+    val lon: Double? = null,
+)
 
 enum class TrainCategory { R, RE, RA, IR, IRN, IC, ICN, RR, IRA, RRF, OTHER }
 
