@@ -27,9 +27,6 @@ android {
     kotlin {
         jvmToolchain(21)
     }
-
-    sourceSets["main"].java.srcDirs("src/main/kotlin")
-    sourceSets["test"].java.srcDirs("src/test/kotlin")
 }
 
 dependencies {

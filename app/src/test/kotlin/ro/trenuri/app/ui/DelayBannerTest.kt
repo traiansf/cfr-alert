@@ -20,4 +20,18 @@ class DelayBannerTest {
     fun positive_minutes_is_delayed_with_details() {
         assertEquals(DelayBanner.Delayed(7, "18:46"), delayBannerOf(Delay(7, "18:46")))
     }
+
+    @Test
+    fun negativeMinutesIsTreatedAsOnTime() {
+        // infofer never reports negative delay; guard documents the <= 0 branch.
+        assertEquals(DelayBanner.OnTime, delayBannerOf(Delay(minutes = -3, reportedAt = "18:46")))
+    }
+
+    @Test
+    fun delayedWithNullReportedAtIsPreserved() {
+        assertEquals(
+            DelayBanner.Delayed(minutes = 5, reportedAt = null),
+            delayBannerOf(Delay(minutes = 5, reportedAt = null)),
+        )
+    }
 }

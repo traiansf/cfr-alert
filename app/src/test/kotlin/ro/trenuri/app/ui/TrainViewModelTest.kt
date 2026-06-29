@@ -76,6 +76,14 @@ class TrainViewModelTest {
     }
 
     @Test
+    fun parseErrorMapsToParseMessage() = runTest {
+        val vm = TrainViewModel(repoReturning(TrainResult.ParseError), fixedClock, testMessages)
+        vm.search("5568")
+        advanceUntilIdle()
+        assertEquals(TrainUiState.Error("parse"), vm.state.value)
+    }
+
+    @Test
     fun second_search_cancels_first_so_only_second_train_is_loaded() = runTest {
         val loaded = mutableListOf<String>()
         val branch = ro.trenuri.infofer.model.TrainBranch("X", "Y", delay = null, stops = emptyList())

@@ -1,6 +1,9 @@
 package ro.trenuri.app.di
 
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import org.koin.core.module.dsl.viewModel
+import org.koin.core.qualifier.named
 import org.koin.dsl.module
 import ro.trenuri.app.data.InfoferTrainProvider
 import ro.trenuri.app.data.TrainProvider
@@ -13,10 +16,13 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 
+val ioDispatcherQualifier = named("io")
+
 val appModule = module {
     single<InfoferClient> { defaultInfoferClient() }
     single<TrainProvider> { InfoferTrainProvider(get()) }
-    single { TrainRepository(get()) }
+    single<CoroutineDispatcher>(ioDispatcherQualifier) { Dispatchers.IO }
+    single { TrainRepository(get(), get(ioDispatcherQualifier)) }
     single<ErrorMessages> {
         object : ErrorMessages {
             override val network = "Verifică conexiunea la internet."
