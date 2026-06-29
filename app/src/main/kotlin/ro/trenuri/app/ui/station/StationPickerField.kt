@@ -16,6 +16,7 @@ import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -35,12 +36,17 @@ fun StationPickerField(
     onPicked: (Station) -> Unit,
     onRequestLocation: () -> Unit,
     modifier: Modifier = Modifier,
+    selected: Station? = null,
     vm: StationPickerViewModel = koinViewModel(key = label),
 ) {
     val suggestions by vm.suggestions.collectAsStateWithLifecycle()
     val nearby by vm.nearby.collectAsStateWithLifecycle()
-    var query by remember { mutableStateOf("") }
+    var query by remember { mutableStateOf(selected?.name ?: "") }
     var expanded by remember { mutableStateOf(false) }
+
+    LaunchedEffect(selected) {
+        query = selected?.name ?: ""
+    }
 
     Column(modifier = modifier) {
         ExposedDropdownMenuBox(

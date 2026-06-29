@@ -58,6 +58,7 @@ fun ItinerarySearchScreen(
                 onPicked = { from = it },
                 onRequestLocation = {},
                 modifier = Modifier.padding(top = 16.dp),
+                selected = from,
             )
         }
         item {
@@ -71,6 +72,7 @@ fun ItinerarySearchScreen(
                     onPicked = { to = it },
                     onRequestLocation = {},
                     modifier = Modifier.weight(1f),
+                    selected = to,
                 )
                 TextButton(onClick = {
                     val temp = from

@@ -66,6 +66,7 @@ fun StationBoardScreen(
                 },
                 onRequestLocation = {},
                 modifier = Modifier.padding(top = 16.dp),
+                selected = selectedStation,
             )
         }
         item {
