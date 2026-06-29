@@ -5,6 +5,9 @@ import kotlinx.coroutines.Dispatchers
 import org.koin.core.module.dsl.viewModel
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
+import ro.trenuri.app.data.BoardProvider
+import ro.trenuri.app.data.BoardRepository
+import ro.trenuri.app.data.InfoferBoardProvider
 import ro.trenuri.app.data.InfoferItineraryProvider
 import ro.trenuri.app.data.InfoferStationProvider
 import ro.trenuri.app.data.InfoferTrainProvider
@@ -16,6 +19,7 @@ import ro.trenuri.app.data.TrainProvider
 import ro.trenuri.app.data.TrainRepository
 import ro.trenuri.app.ui.ErrorMessages
 import ro.trenuri.app.ui.TrainViewModel
+import ro.trenuri.app.ui.board.BoardViewModel
 import ro.trenuri.app.ui.common.AppDate
 import ro.trenuri.app.ui.common.Today
 import ro.trenuri.app.ui.itinerary.ItineraryViewModel
@@ -33,10 +37,12 @@ val appModule = module {
     single<TrainProvider> { InfoferTrainProvider(get()) }
     single<StationProvider> { InfoferStationProvider(get()) }
     single<ItineraryProvider> { InfoferItineraryProvider(get()) }
+    single<BoardProvider> { InfoferBoardProvider(get()) }
     single<CoroutineDispatcher>(ioDispatcherQualifier) { Dispatchers.IO }
     single { TrainRepository(get(), get(ioDispatcherQualifier)) }
     single { StationRepository(get(), get(ioDispatcherQualifier)) }
     single { ItineraryRepository(get(), get(ioDispatcherQualifier)) }
+    single { BoardRepository(get(), get(ioDispatcherQualifier)) }
     single<ErrorMessages> {
         object : ErrorMessages {
             override val network = "Verifică conexiunea la internet."
@@ -58,4 +64,5 @@ val appModule = module {
     }
     viewModel { StationPickerViewModel(get()) }
     viewModel { ItineraryViewModel(get(), get()) }
+    viewModel { BoardViewModel(get(), get()) }
 }
