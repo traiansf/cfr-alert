@@ -10,6 +10,9 @@ class InfoferClient(private val session: InfoferSession) {
 
     suspend fun getTrain(trainNumber: String, year: Int, month: Int, day: Int): TrainItinerary {
         val page = session.getPage("/ro-RO/Tren/$trainNumber")
+        if (isTrainNotFoundPage(page)) {
+            throw InfoferTrainNotFoundException("no train found with number $trainNumber")
+        }
         val tokens = extractTokens(page)
         val html = session.postResult(
             "/ro-RO/Trains/TrainsResult",

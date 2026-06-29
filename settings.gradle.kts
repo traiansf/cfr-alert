@@ -1,10 +1,11 @@
 rootProject.name = "trenuri"
 
 pluginManagement {
-    repositories { gradlePluginPortal(); mavenCentral() }
+    repositories { google(); gradlePluginPortal(); mavenCentral() }
 }
 dependencyResolutionManagement {
-    repositories { mavenCentral() }
+    repositories { google(); mavenCentral() }
 }
 
 include(":infofer-client")
+include(":app")
