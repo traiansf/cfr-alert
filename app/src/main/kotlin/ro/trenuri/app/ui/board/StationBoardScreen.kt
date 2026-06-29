@@ -85,49 +85,17 @@ fun StationBoardScreen(
 
     val listState = rememberLazyListState()
 
-    // ── scroll-to-bottom lazy load trigger (day 3+) ───────────────────────────
-    val nearBottom by remember {
-        derivedStateOf {
-            val info = listState.layoutInfo
-            val visible = info.visibleItemsInfo
-            val total = info.totalItemsCount
-            visible.isNotEmpty() && total > 0 && visible.last().index >= total - 3
-        }
-    }
+    // content fits entirely on screen (nothing to scroll)
+    val contentFits by remember { derivedStateOf { !listState.canScrollForward && !listState.canScrollBackward } }
+    // user has scrolled to the bottom of a scrollable list
+    val atBottomScrolled by remember { derivedStateOf { !listState.canScrollForward && listState.canScrollBackward } }
 
-    // ── eager auto-fill trigger (days 1-2, when content doesn't fill viewport) ─
-    val contentDoesNotFillViewport by remember {
-        derivedStateOf {
-            val info = listState.layoutInfo
-            val visible = info.visibleItemsInfo
-            if (visible.isEmpty()) return@derivedStateOf false
-            val lastVisible = visible.last().index
-            val total = info.totalItemsCount
-            // Content doesn't fill viewport when: last item is visible AND items don't reach the bottom
-            val contentHeight = visible.sumOf { it.size }
-            val viewportHeight = info.viewportEndOffset - info.viewportStartOffset
-            lastVisible == total - 1 && contentHeight <= viewportHeight
-        }
-    }
-
-    // Lazy load: trigger when near the bottom (scroll-driven, all days beyond cap)
-    LaunchedEffect(nearBottom) {
+    LaunchedEffect(contentFits, atBottomScrolled, state) {
         val s = state as? BoardUiState.Success ?: return@LaunchedEffect
-        if (nearBottom && s.canLoadMore && !s.loadingMore) {
-            vm.loadMore()
-        }
-    }
-
-    // Eager auto-fill: when sections < EAGER_AUTO_LOAD_DAYS and content doesn't fill screen
-    LaunchedEffect(state, contentDoesNotFillViewport) {
-        val s = state as? BoardUiState.Success ?: return@LaunchedEffect
-        if (
-            s.canLoadMore &&
-            !s.loadingMore &&
-            s.sections.size < EAGER_AUTO_LOAD_DAYS &&
-            contentDoesNotFillViewport
-        ) {
-            vm.loadMore()
+        if (s.loadingMore || !s.canLoadMore) return@LaunchedEffect
+        when {
+            contentFits && s.sections.size < EAGER_AUTO_LOAD_DAYS -> vm.loadMore() // eager, capped at 2
+            atBottomScrolled -> vm.loadMore()                                       // lazy, on scroll
         }
     }
 
