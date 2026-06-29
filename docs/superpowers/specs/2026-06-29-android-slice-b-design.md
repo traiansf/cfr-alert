@@ -75,11 +75,22 @@ which both itinerary search and the station board require.
   (`name`, `slug`, optional `county` for disambiguation).
 - **Asset location:** `infofer-client` **commonMain resources**, so iOS/web
   reuse it later. Android consumes it via the existing KMP dependency.
-- **New method:** `InfoferClient.findStations(query: String): List<Station>` —
-  loads `stations.json` once (lazily, cached in memory) and filters
-  diacritic-insensitively (prefix-first, then substring), returning
-  `Station(name, slug)`. No per-query network; fully offline; sub-millisecond
+- **New method:** `InfoferClient.findStations(query: String, near: LatLon? =
+  null): List<Station>` — loads the bundled dataset once (lazily, cached in
+  memory) and filters diacritic-insensitively (prefix-first, then substring),
+  returning `Station(name, slug, lat, lon)`. When `near` is supplied and a
+  matched station has coordinates, results are **ordered by haversine distance**
+  to the device (closest first); stations without coordinates keep name order
+  after the located ones. No per-query network; fully offline; sub-millisecond
   over ~1,000–1,500 stations.
+- **Coordinates (OpenStreetMap):** the `Station` model gains optional `lat`/`lon`
+  (default `null`, backward-compatible). At **generation time** the conversion
+  script queries the OpenStreetMap **Overpass API** for Romanian
+  `railway=station`/`railway=halt` nodes and matches them to our stations by
+  normalized (de-diacriticized) name, bundling the coordinates. Coverage gaps
+  (unmatched stations) keep `null` coordinates and degrade gracefully (name
+  order, no distance sort). OSM data is **ODbL-licensed** → add attribution in
+  the app's About/README. Coordinates are bundled once; no runtime OSM calls.
 - **Correctness gate (static, not runtime):** the conversion script validates a
   representative sample of derived slugs against infofer (and against the
   existing `itineraries-*`/`station-board-*` fixtures) so we never ship names
@@ -196,10 +207,12 @@ date. Stops expose `onStationClick(station)` for cross-tab navigation.
 ### Shared components
 
 - **`StationPickerField`:** a text field with a typeahead dropdown backed by
-  `findStations(query)` (diacritic-insensitive), plus a **GPS button** that calls
-  `findNearestStations(lat, lon)` and shows a short pick-list. Either path yields
-  a `Station(name, slug)`; the screen holds the resolved slug. Typing a name not
-  in the dataset is allowed but flagged as unresolved.
+  `findStations(query, near)` (diacritic-insensitive). When the device location
+  is known (permission granted), suggestions are **ordered by distance** to the
+  device; otherwise name order. A **GPS button** calls `findNearestStations(lat,
+  lon)` and shows a short pick-list. Either path yields a `Station`; the screen
+  holds the resolved slug. Typing a name not in the dataset is allowed but
+  flagged as unresolved.
 - **`DatePickerField`:** Material3 date-picker dialog; default today; feeds
   `year/month/day` to the client. Shared by all three tabs.
 
@@ -256,7 +269,9 @@ typeahead search still works without location.
 **Headless, in-container (CI-style — must pass before on-device check):**
 
 - `findStations` over a small fixture dataset: prefix vs substring matching,
-  diacritic-insensitivity, slug correctness for known stations, empty query.
+  diacritic-insensitivity, slug correctness for known stations, empty query, and
+  **distance ordering** when `near` is supplied (located stations sorted by
+  haversine distance; null-coordinate stations fall to the end).
 - `ItineraryViewModel` / `BoardViewModel` state-machine tests with fake
   repositories: Idle → Loading → Success / Empty / Error; board toggle re-query;
   stale-request cancellation.
