@@ -91,11 +91,16 @@ fun StationBoardScreen(
     val atBottomScrolled by remember { derivedStateOf { !listState.canScrollForward && listState.canScrollBackward } }
 
     LaunchedEffect(contentFits, atBottomScrolled, state) {
+        android.util.Log.d(
+            "BOARDDBG",
+            "trigger: fits=$contentFits atBottom=$atBottomScrolled fwd=${listState.canScrollForward} back=${listState.canScrollBackward} state=${state::class.simpleName}" +
+                ((state as? BoardUiState.Success)?.let { " sections=${it.sections.size} loadingMore=${it.loadingMore} canLoadMore=${it.canLoadMore}" } ?: ""),
+        )
         val s = state as? BoardUiState.Success ?: return@LaunchedEffect
         if (s.loadingMore || !s.canLoadMore) return@LaunchedEffect
         when {
-            contentFits && s.sections.size < EAGER_AUTO_LOAD_DAYS -> vm.loadMore() // eager, capped at 2
-            atBottomScrolled -> vm.loadMore()                                       // lazy, on scroll
+            contentFits && s.sections.size < EAGER_AUTO_LOAD_DAYS -> { android.util.Log.d("BOARDDBG", "trigger -> EAGER loadMore"); vm.loadMore() }
+            atBottomScrolled -> { android.util.Log.d("BOARDDBG", "trigger -> LAZY loadMore"); vm.loadMore() }
         }
     }
 
