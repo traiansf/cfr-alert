@@ -1,7 +1,9 @@
 package ro.trenuri.app.di
 
+import android.content.Context
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.viewModel
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
@@ -22,6 +24,17 @@ import ro.trenuri.app.ui.TrainViewModel
 import ro.trenuri.app.ui.board.BoardViewModel
 import ro.trenuri.app.ui.common.AppDate
 import ro.trenuri.app.ui.common.Today
+import ro.trenuri.app.ui.history.PrefsQueryHistoryStore
+import ro.trenuri.app.ui.history.QueryHistoryStore
+import ro.trenuri.app.ui.history.RouteQuery
+import ro.trenuri.app.ui.history.StationQuery
+import ro.trenuri.app.ui.history.TrainQuery
+import ro.trenuri.app.ui.history.deserializeRouteQuery
+import ro.trenuri.app.ui.history.deserializeStationQuery
+import ro.trenuri.app.ui.history.deserializeTrainQuery
+import ro.trenuri.app.ui.history.serializeRouteQuery
+import ro.trenuri.app.ui.history.serializeStationQuery
+import ro.trenuri.app.ui.history.serializeTrainQuery
 import ro.trenuri.app.ui.itinerary.ItineraryViewModel
 import ro.trenuri.app.ui.station.StationPickerViewModel
 import ro.trenuri.infofer.InfoferClient
@@ -65,4 +78,36 @@ val appModule = module {
     viewModel { StationPickerViewModel(get()) }
     viewModel { ItineraryViewModel(get(), get()) }
     viewModel { BoardViewModel(get(), get()) }
+
+    // Per-tab query history — persisted via SharedPreferences
+    single<QueryHistoryStore<TrainQuery>>(named("history_tren")) {
+        val prefs = androidContext().getSharedPreferences("query_history", Context.MODE_PRIVATE)
+        PrefsQueryHistoryStore(
+            prefs = prefs,
+            key = "tren",
+            cap = 10,
+            serialize = ::serializeTrainQuery,
+            deserialize = ::deserializeTrainQuery,
+        )
+    }
+    single<QueryHistoryStore<RouteQuery>>(named("history_rute")) {
+        val prefs = androidContext().getSharedPreferences("query_history", Context.MODE_PRIVATE)
+        PrefsQueryHistoryStore(
+            prefs = prefs,
+            key = "rute",
+            cap = 10,
+            serialize = ::serializeRouteQuery,
+            deserialize = ::deserializeRouteQuery,
+        )
+    }
+    single<QueryHistoryStore<StationQuery>>(named("history_statie")) {
+        val prefs = androidContext().getSharedPreferences("query_history", Context.MODE_PRIVATE)
+        PrefsQueryHistoryStore(
+            prefs = prefs,
+            key = "statie",
+            cap = 10,
+            serialize = ::serializeStationQuery,
+            deserialize = ::deserializeStationQuery,
+        )
+    }
 }

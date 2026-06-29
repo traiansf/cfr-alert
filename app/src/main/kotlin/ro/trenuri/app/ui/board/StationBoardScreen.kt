@@ -1,6 +1,7 @@
 package ro.trenuri.app.ui.board
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -8,6 +9,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -27,11 +30,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import org.koin.compose.koinInject
+import org.koin.core.qualifier.named
 import ro.trenuri.app.ui.common.AppDate
 import ro.trenuri.app.ui.common.DatePickerField
 import ro.trenuri.app.ui.common.EmptyState
 import ro.trenuri.app.ui.common.ErrorState
 import ro.trenuri.app.ui.common.LoadingState
+import ro.trenuri.app.ui.history.QueryHistoryStore
+import ro.trenuri.app.ui.history.StationQuery
 import ro.trenuri.app.ui.station.StationPickerField
 import ro.trenuri.infofer.model.BoardEntry
 import ro.trenuri.infofer.model.BoardKind
@@ -47,11 +54,13 @@ fun StationBoardScreen(
     date: AppDate,
     onDateChange: (AppDate) -> Unit,
     onTrainClick: (String) -> Unit,
+    historyStore: QueryHistoryStore<StationQuery> = koinInject(qualifier = named("history_statie")),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val kind by vm.kind.collectAsStateWithLifecycle()
     val loadedStation by vm.loadedStation.collectAsStateWithLifecycle()
     var selectedStation by remember { mutableStateOf(vm.loadedStation.value) }
+    var recentItems by remember { mutableStateOf(historyStore.recent()) }
     LaunchedEffect(loadedStation) { loadedStation?.let { selectedStation = it } }
 
     LazyColumn(
@@ -66,6 +75,8 @@ fun StationBoardScreen(
                 onPicked = { station ->
                     selectedStation = station
                     vm.load(station, date)
+                    historyStore.add(StationQuery(station, kind))
+                    recentItems = historyStore.recent()
                 },
                 modifier = Modifier.padding(top = 16.dp),
                 selected = selectedStation,
@@ -92,6 +103,26 @@ fun StationBoardScreen(
                     onClick = { vm.setKind(BoardKind.ARRIVALS) },
                     shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
                 ) { Text("Sosiri") }
+            }
+        }
+
+        if (recentItems.isNotEmpty()) {
+            item {
+                Text("Recente", style = MaterialTheme.typography.labelSmall)
+            }
+            item {
+                Row(
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    recentItems.forEach { entry ->
+                        AssistChip(
+                            onClick = { selectedStation = entry.station },
+                            label = { Text(entry.station.name) },
+                        )
+                    }
+                }
             }
         }
 

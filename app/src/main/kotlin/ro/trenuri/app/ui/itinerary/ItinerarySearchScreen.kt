@@ -1,6 +1,7 @@
 package ro.trenuri.app.ui.itinerary
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -8,6 +9,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.HorizontalDivider
@@ -25,11 +28,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import org.koin.compose.koinInject
+import org.koin.core.qualifier.named
 import ro.trenuri.app.ui.common.AppDate
 import ro.trenuri.app.ui.common.DatePickerField
 import ro.trenuri.app.ui.common.EmptyState
 import ro.trenuri.app.ui.common.ErrorState
 import ro.trenuri.app.ui.common.LoadingState
+import ro.trenuri.app.ui.history.QueryHistoryStore
+import ro.trenuri.app.ui.history.RouteQuery
 import ro.trenuri.app.ui.station.StationPickerField
 import ro.trenuri.infofer.model.ItineraryLeg
 import ro.trenuri.infofer.model.ItineraryOption
@@ -41,12 +48,14 @@ fun ItinerarySearchScreen(
     date: AppDate,
     onDateChange: (AppDate) -> Unit,
     onTrainClick: (String) -> Unit,
+    historyStore: QueryHistoryStore<RouteQuery> = koinInject(qualifier = named("history_rute")),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val loadedFrom by vm.loadedFrom.collectAsStateWithLifecycle()
     val loadedTo by vm.loadedTo.collectAsStateWithLifecycle()
     var from by remember { mutableStateOf(vm.loadedFrom.value) }
     var to by remember { mutableStateOf(vm.loadedTo.value) }
+    var recentItems by remember { mutableStateOf(historyStore.recent()) }
     LaunchedEffect(loadedFrom) { loadedFrom?.let { from = it } }
     LaunchedEffect(loadedTo) { loadedTo?.let { to = it } }
 
@@ -96,12 +105,39 @@ fun ItinerarySearchScreen(
                 onClick = {
                     val f = from
                     val t = to
-                    if (f != null && t != null) vm.search(f, t, date)
+                    if (f != null && t != null) {
+                        vm.search(f, t, date)
+                        historyStore.add(RouteQuery(f, t))
+                        recentItems = historyStore.recent()
+                    }
                 },
                 enabled = from != null && to != null,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text("Caută")
+            }
+        }
+
+        if (recentItems.isNotEmpty()) {
+            item {
+                Text("Recente", style = MaterialTheme.typography.labelSmall)
+            }
+            item {
+                Row(
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    recentItems.forEach { entry ->
+                        AssistChip(
+                            onClick = {
+                                from = entry.from
+                                to = entry.to
+                            },
+                            label = { Text("${entry.from.name} → ${entry.to.name}") },
+                        )
+                    }
+                }
             }
         }
 

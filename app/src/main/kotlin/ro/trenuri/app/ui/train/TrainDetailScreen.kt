@@ -1,6 +1,7 @@
 package ro.trenuri.app.ui.train
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,6 +10,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -21,17 +24,22 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import org.koin.compose.koinInject
+import org.koin.core.qualifier.named
 import ro.trenuri.app.ui.DelayBanner
 import ro.trenuri.app.ui.TrainUiState
 import ro.trenuri.app.ui.TrainViewModel
 import ro.trenuri.app.ui.common.AppDate
 import ro.trenuri.app.ui.common.DatePickerField
 import ro.trenuri.app.ui.delayBannerOf
+import ro.trenuri.app.ui.history.QueryHistoryStore
+import ro.trenuri.app.ui.history.TrainQuery
 import ro.trenuri.infofer.model.Station
 import ro.trenuri.infofer.model.StopStatus
 import ro.trenuri.infofer.model.TrainBranch
@@ -48,10 +56,12 @@ fun TrainDetailScreen(
     date: AppDate,
     onDateChange: (AppDate) -> Unit,
     onStationClick: (Station) -> Unit,
+    historyStore: QueryHistoryStore<TrainQuery> = koinInject(qualifier = named("history_tren")),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val loadedNumber by viewModel.loadedNumber.collectAsStateWithLifecycle()
     var number by remember { mutableStateOf(viewModel.loadedNumber.value) }
+    var recentItems by remember { mutableStateOf(historyStore.recent()) }
     LaunchedEffect(loadedNumber) { if (loadedNumber.isNotBlank()) number = loadedNumber }
 
     Column(
@@ -72,7 +82,32 @@ fun TrainDetailScreen(
                 modifier = Modifier.weight(1f),
                 singleLine = true,
             )
-            Button(onClick = { viewModel.load(number, date) }) { Text("Caută") }
+            Button(onClick = {
+                val trimmed = number.trim()
+                viewModel.load(trimmed, date)
+                if (trimmed.isNotBlank()) {
+                    historyStore.add(TrainQuery(trimmed))
+                    recentItems = historyStore.recent()
+                }
+            }) { Text("Caută") }
+        }
+
+        if (recentItems.isNotEmpty()) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Recente", style = MaterialTheme.typography.labelSmall)
+                Row(
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    recentItems.forEach { entry ->
+                        AssistChip(
+                            onClick = { number = entry.number },
+                            label = { Text(entry.number) },
+                        )
+                    }
+                }
+            }
         }
 
         when (val s = state) {

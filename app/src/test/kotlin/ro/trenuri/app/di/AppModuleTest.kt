@@ -1,5 +1,6 @@
 package ro.trenuri.app.di
 
+import android.content.Context
 import kotlinx.coroutines.CoroutineDispatcher
 import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
@@ -18,9 +19,12 @@ class AppModuleTest {
         // - InfoferSession: constructed inside defaultInfoferClient(), never injected by Koin.
         // - CoroutineDispatcher: TrainRepository's `io` param has a default of Dispatchers.IO;
         //   Koin's verify() doesn't understand Kotlin default parameter values.
+        // - Context: consumed by history store bindings via androidContext(); provided by
+        //   KoinAndroidContext at runtime (Application), listed here for static verify only.
         appModule.verify(extraTypes = listOf(
             InfoferSession::class,      // factory-internal; created by defaultInfoferClient()
             CoroutineDispatcher::class, // default param in TrainRepository; not Koin-injected
+            Context::class,             // Android application context; supplied at runtime
         ))
     }
 
