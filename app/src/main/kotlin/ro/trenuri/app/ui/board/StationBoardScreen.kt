@@ -191,7 +191,17 @@ fun StationBoardScreen(
                 ) {
                     recentItems.forEach { entry ->
                         AssistChip(
-                            onClick = { selectedStation = entry.station },
+                            // No submit button on this tab — a history tap auto-submits,
+                            // restoring the saved station AND its Plecări/Sosiri kind.
+                            onClick = {
+                                selectedStation = entry.station
+                                keyboardController?.hide()
+                                focusManager.clearFocus()
+                                vm.setKind(entry.kind)
+                                vm.load(entry.station, date)
+                                historyStore.add(StationQuery(entry.station, entry.kind))
+                                recentItems = historyStore.recent()
+                            },
                             label = { Text(entry.station.name) },
                         )
                     }
