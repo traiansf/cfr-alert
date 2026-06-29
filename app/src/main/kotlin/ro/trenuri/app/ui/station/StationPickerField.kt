@@ -22,6 +22,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.androidx.compose.koinViewModel
@@ -34,15 +35,35 @@ import ro.trenuri.infofer.model.Station
 fun StationPickerField(
     label: String,
     onPicked: (Station) -> Unit,
-    onRequestLocation: () -> Unit,
     modifier: Modifier = Modifier,
     selected: Station? = null,
     vm: StationPickerViewModel = koinViewModel(key = label),
 ) {
+    val context = LocalContext.current
     val suggestions by vm.suggestions.collectAsStateWithLifecycle()
     val nearby by vm.nearby.collectAsStateWithLifecycle()
     var query by remember { mutableStateOf(selected?.name ?: "") }
     var expanded by remember { mutableStateOf(false) }
+    var locationError by remember { mutableStateOf(false) }
+
+    // Opportunistic: if permission is already granted, seed distance ordering for typed
+    // suggestions without prompting. Never prompt here — only read if already granted.
+    LaunchedEffect(Unit) {
+        if (isLocationGranted(context)) {
+            readLastKnownLocation(context)?.let { (lat, lon) ->
+                vm.setLocation(lat, lon)
+            }
+        }
+    }
+
+    // Triggered only by explicit user action (GPS button tap).
+    val requestLocation = rememberLocationRequester(
+        onLocation = { lat, lon ->
+            locationError = false
+            vm.loadNearby(lat, lon)
+        },
+        onDenied = { locationError = true },
+    )
 
     LaunchedEffect(selected) {
         query = selected?.name ?: ""
@@ -63,7 +84,7 @@ fun StationPickerField(
                 },
                 label = { Text(label) },
                 trailingIcon = {
-                    IconButton(onClick = onRequestLocation) {
+                    IconButton(onClick = requestLocation) {
                         Icon(Icons.Default.LocationOn, contentDescription = "Locație")
                     }
                 },
@@ -87,6 +108,13 @@ fun StationPickerField(
                     )
                 }
             }
+        }
+
+        if (locationError) {
+            Text(
+                text = "Nu am putut obține locația.",
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            )
         }
 
         when (val n = nearby) {

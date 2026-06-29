@@ -60,7 +60,6 @@ fun ItinerarySearchScreen(
             StationPickerField(
                 label = "De la",
                 onPicked = { from = it },
-                onRequestLocation = {},
                 modifier = Modifier.padding(top = 16.dp),
                 selected = from,
             )
@@ -74,7 +73,6 @@ fun ItinerarySearchScreen(
                 StationPickerField(
                     label = "Până la",
                     onPicked = { to = it },
-                    onRequestLocation = {},
                     modifier = Modifier.weight(1f),
                     selected = to,
                 )

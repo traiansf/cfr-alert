@@ -67,7 +67,6 @@ fun StationBoardScreen(
                     selectedStation = station
                     vm.load(station, date)
                 },
-                onRequestLocation = {},
                 modifier = Modifier.padding(top = 16.dp),
                 selected = selectedStation,
             )
