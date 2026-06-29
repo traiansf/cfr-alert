@@ -11,6 +11,7 @@ import ro.trenuri.app.data.TrainRepository
 import ro.trenuri.app.ui.ErrorMessages
 import ro.trenuri.app.ui.TrainViewModel
 import ro.trenuri.app.ui.common.AppDate
+import ro.trenuri.app.ui.common.Today
 import ro.trenuri.infofer.InfoferClient
 import ro.trenuri.infofer.defaultInfoferClient
 import kotlinx.datetime.Clock
@@ -30,13 +31,16 @@ val appModule = module {
             override val parse = "Nu am putut citi răspunsul de la infofer."
         }
     }
+    single<Today>(named("today")) {
+        {
+            val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+            AppDate(now.year, now.monthNumber, now.dayOfMonth)
+        }
+    }
     viewModel {
         TrainViewModel(
             repository = get(),
-            today = {
-                val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
-                AppDate(now.year, now.monthNumber, now.dayOfMonth)
-            },
+            today = get(named("today")),
             messages = get(),
         )
     }
