@@ -16,6 +16,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,8 +43,12 @@ fun ItinerarySearchScreen(
     onTrainClick: (String) -> Unit,
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
-    var from by remember { mutableStateOf<Station?>(null) }
-    var to by remember { mutableStateOf<Station?>(null) }
+    val loadedFrom by vm.loadedFrom.collectAsStateWithLifecycle()
+    val loadedTo by vm.loadedTo.collectAsStateWithLifecycle()
+    var from by remember { mutableStateOf(vm.loadedFrom.value) }
+    var to by remember { mutableStateOf(vm.loadedTo.value) }
+    LaunchedEffect(loadedFrom) { loadedFrom?.let { from = it } }
+    LaunchedEffect(loadedTo) { loadedTo?.let { to = it } }
 
     LazyColumn(
         modifier = Modifier

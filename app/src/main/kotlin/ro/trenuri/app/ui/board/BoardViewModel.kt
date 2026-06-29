@@ -25,6 +25,9 @@ class BoardViewModel(
     private val _kind = MutableStateFlow(BoardKind.DEPARTURES)
     val kind: StateFlow<BoardKind> = _kind.asStateFlow()
 
+    private val _loadedStation = MutableStateFlow<Station?>(null)
+    val loadedStation: StateFlow<Station?> = _loadedStation.asStateFlow()
+
     private var lastStation: Station? = null
     private var lastDate: AppDate? = null
     private var job: Job? = null
@@ -33,6 +36,7 @@ class BoardViewModel(
         if (station.slug.isBlank()) return
         lastStation = station
         lastDate = date
+        _loadedStation.value = station
         run()
     }
 

@@ -21,6 +21,9 @@ class TrainViewModel(
     private val _state = MutableStateFlow<TrainUiState>(TrainUiState.Idle)
     val state: StateFlow<TrainUiState> = _state.asStateFlow()
 
+    private val _loadedNumber = MutableStateFlow("")
+    val loadedNumber: StateFlow<String> = _loadedNumber.asStateFlow()
+
     private var searchJob: Job? = null
 
     fun search(number: String) = load(number, today())
@@ -28,6 +31,7 @@ class TrainViewModel(
     fun load(number: String, date: AppDate) {
         val trimmed = number.trim()
         if (trimmed.isEmpty()) return
+        _loadedNumber.value = trimmed
         searchJob?.cancel()
         _state.value = TrainUiState.Loading
         searchJob = viewModelScope.launch {

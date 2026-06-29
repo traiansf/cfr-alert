@@ -16,6 +16,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,7 +50,9 @@ fun TrainDetailScreen(
     onStationClick: (Station) -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    var number by remember { mutableStateOf("") }
+    val loadedNumber by viewModel.loadedNumber.collectAsStateWithLifecycle()
+    var number by remember { mutableStateOf(viewModel.loadedNumber.value) }
+    LaunchedEffect(loadedNumber) { if (loadedNumber.isNotBlank()) number = loadedNumber }
 
     Column(
         Modifier

@@ -17,6 +17,7 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,7 +50,9 @@ fun StationBoardScreen(
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val kind by vm.kind.collectAsStateWithLifecycle()
-    var selectedStation by remember { mutableStateOf<Station?>(null) }
+    val loadedStation by vm.loadedStation.collectAsStateWithLifecycle()
+    var selectedStation by remember { mutableStateOf(vm.loadedStation.value) }
+    LaunchedEffect(loadedStation) { loadedStation?.let { selectedStation = it } }
 
     LazyColumn(
         modifier = Modifier

@@ -19,10 +19,19 @@ class ItineraryViewModel(
 ) : ViewModel() {
     private val _state = MutableStateFlow<ItineraryUiState>(ItineraryUiState.Idle)
     val state: StateFlow<ItineraryUiState> = _state.asStateFlow()
+
+    private val _loadedFrom = MutableStateFlow<Station?>(null)
+    val loadedFrom: StateFlow<Station?> = _loadedFrom.asStateFlow()
+
+    private val _loadedTo = MutableStateFlow<Station?>(null)
+    val loadedTo: StateFlow<Station?> = _loadedTo.asStateFlow()
+
     private var job: Job? = null
 
     fun search(from: Station, to: Station, date: AppDate) {
         if (from.slug.isBlank() || to.slug.isBlank()) return
+        _loadedFrom.value = from
+        _loadedTo.value = to
         job?.cancel()
         _state.value = ItineraryUiState.Loading
         job = viewModelScope.launch {
