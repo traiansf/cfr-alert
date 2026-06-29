@@ -29,7 +29,6 @@ import ro.trenuri.app.ui.common.DatePickerField
 import ro.trenuri.app.ui.common.EmptyState
 import ro.trenuri.app.ui.common.ErrorState
 import ro.trenuri.app.ui.common.LoadingState
-import ro.trenuri.app.ui.common.Today
 import ro.trenuri.app.ui.station.StationPickerField
 import ro.trenuri.infofer.model.ItineraryLeg
 import ro.trenuri.infofer.model.ItineraryOption
@@ -38,13 +37,13 @@ import ro.trenuri.infofer.model.Station
 @Composable
 fun ItinerarySearchScreen(
     vm: ItineraryViewModel,
-    today: Today,
+    date: AppDate,
+    onDateChange: (AppDate) -> Unit,
     onTrainClick: (String) -> Unit,
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     var from by remember { mutableStateOf<Station?>(null) }
     var to by remember { mutableStateOf<Station?>(null) }
-    var date by remember { mutableStateOf(today()) }
 
     LazyColumn(
         modifier = Modifier
@@ -86,7 +85,7 @@ fun ItinerarySearchScreen(
         item {
             DatePickerField(
                 date = date,
-                onDateChange = { date = it },
+                onDateChange = onDateChange,
             )
         }
         item {

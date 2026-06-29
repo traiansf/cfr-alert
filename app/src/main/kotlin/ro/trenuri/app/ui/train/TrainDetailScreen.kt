@@ -30,7 +30,6 @@ import ro.trenuri.app.ui.TrainUiState
 import ro.trenuri.app.ui.TrainViewModel
 import ro.trenuri.app.ui.common.AppDate
 import ro.trenuri.app.ui.common.DatePickerField
-import ro.trenuri.app.ui.common.Today
 import ro.trenuri.app.ui.delayBannerOf
 import ro.trenuri.infofer.model.Station
 import ro.trenuri.infofer.model.StopStatus
@@ -45,12 +44,12 @@ private val Red = Color(0xFFB71C1C)
 @Composable
 fun TrainDetailScreen(
     viewModel: TrainViewModel,
-    today: Today,
+    date: AppDate,
+    onDateChange: (AppDate) -> Unit,
     onStationClick: (Station) -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var number by remember { mutableStateOf("") }
-    var date by remember { mutableStateOf(today()) }
 
     Column(
         Modifier
@@ -60,7 +59,7 @@ fun TrainDetailScreen(
     ) {
         DatePickerField(
             date = date,
-            onDateChange = { date = it },
+            onDateChange = onDateChange,
         )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
@@ -133,9 +132,11 @@ private fun StopRow(stop: TrainStop, onStationClick: (Station) -> Unit) {
         Text(times, color = statusColor)
         Text(
             text = stop.station.name + if (details.isNotEmpty()) "  $details" else "",
-            modifier = Modifier
-                .weight(1f)
-                .clickable { onStationClick(stop.station) },
+            modifier = if (stop.station.slug.isNotBlank()) {
+                Modifier.weight(1f).clickable { onStationClick(stop.station) }
+            } else {
+                Modifier.weight(1f)
+            },
         )
     }
 }

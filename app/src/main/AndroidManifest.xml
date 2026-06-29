@@ -5,8 +5,8 @@
 
     <application
         android:name=".TrenuriApp"
-        android:label="Trenuri"
-        android:theme="@android:style/Theme.Material.Light.NoActionBar">
+        android:label="Alerte Sosiri Trenuri"
+        android:theme="@style/Theme.AlerteSosiriTrenuri">
         <activity
             android:name=".MainActivity"
             android:exported="true">

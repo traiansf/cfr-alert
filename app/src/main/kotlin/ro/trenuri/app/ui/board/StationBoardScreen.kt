@@ -26,11 +26,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import ro.trenuri.app.ui.common.AppDate
 import ro.trenuri.app.ui.common.DatePickerField
 import ro.trenuri.app.ui.common.EmptyState
 import ro.trenuri.app.ui.common.ErrorState
 import ro.trenuri.app.ui.common.LoadingState
-import ro.trenuri.app.ui.common.Today
 import ro.trenuri.app.ui.station.StationPickerField
 import ro.trenuri.infofer.model.BoardEntry
 import ro.trenuri.infofer.model.BoardKind
@@ -43,13 +43,13 @@ private val DelayRed = Color(0xFFB71C1C)
 @Composable
 fun StationBoardScreen(
     vm: BoardViewModel,
-    today: Today,
+    date: AppDate,
+    onDateChange: (AppDate) -> Unit,
     onTrainClick: (String) -> Unit,
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val kind by vm.kind.collectAsStateWithLifecycle()
     var selectedStation by remember { mutableStateOf<Station?>(null) }
-    var date by remember { mutableStateOf(today()) }
 
     LazyColumn(
         modifier = Modifier
@@ -73,7 +73,7 @@ fun StationBoardScreen(
             DatePickerField(
                 date = date,
                 onDateChange = { newDate ->
-                    date = newDate
+                    onDateChange(newDate)
                     selectedStation?.let { vm.load(it, newDate) }
                 },
             )

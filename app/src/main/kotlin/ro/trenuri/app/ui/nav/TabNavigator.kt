@@ -17,10 +17,14 @@ class TabNavigator(
     val selectedTab: StateFlow<Tab> = _selectedTab.asStateFlow()
     private val backStack = ArrayDeque<Tab>()
 
+    private val _canGoBack = MutableStateFlow(false)
+    val canGoBack: StateFlow<Boolean> = _canGoBack.asStateFlow()
+
     private fun goto(tab: Tab) {
         if (tab != _selectedTab.value) {
             backStack.addLast(_selectedTab.value)
             _selectedTab.value = tab
+            _canGoBack.value = true
         }
     }
 
@@ -39,6 +43,7 @@ class TabNavigator(
     fun back(): Boolean {
         val prev = backStack.removeLastOrNull() ?: return false
         _selectedTab.value = prev
+        _canGoBack.value = backStack.isNotEmpty()
         return true
     }
 }
