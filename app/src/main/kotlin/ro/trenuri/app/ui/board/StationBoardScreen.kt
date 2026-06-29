@@ -3,14 +3,17 @@ package ro.trenuri.app.ui.board
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -21,6 +24,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,6 +43,7 @@ import ro.trenuri.app.ui.common.DatePickerField
 import ro.trenuri.app.ui.common.EmptyState
 import ro.trenuri.app.ui.common.ErrorState
 import ro.trenuri.app.ui.common.LoadingState
+import ro.trenuri.app.ui.common.Today
 import ro.trenuri.app.ui.history.QueryHistoryStore
 import ro.trenuri.app.ui.history.StationQuery
 import ro.trenuri.app.ui.station.StationPickerField
@@ -49,6 +54,16 @@ import ro.trenuri.infofer.model.Station
 private val DelayGreen = Color(0xFF1B5E20)
 private val DelayRed = Color(0xFFB71C1C)
 
+/** Returns the day-separator label: "Azi", "Mâine", or the formatted date. */
+private fun dayLabel(date: AppDate, todayDate: AppDate): String = when (date) {
+    todayDate -> "Azi"
+    todayDate.nextDay() -> "Mâine"
+    else -> date.format()
+}
+
+/** Number of day-sections to eagerly auto-load when content doesn't fill the viewport. */
+private const val EAGER_AUTO_LOAD_DAYS = 2
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StationBoardScreen(
@@ -57,6 +72,7 @@ fun StationBoardScreen(
     onDateChange: (AppDate) -> Unit,
     onTrainClick: (String) -> Unit,
     historyStore: QueryHistoryStore<StationQuery> = koinInject(qualifier = named("history_statie")),
+    todayProvider: Today = koinInject(qualifier = named("today")),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val kind by vm.kind.collectAsStateWithLifecycle()
@@ -67,7 +83,58 @@ fun StationBoardScreen(
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
 
+    val listState = rememberLazyListState()
+
+    // ── scroll-to-bottom lazy load trigger (day 3+) ───────────────────────────
+    val nearBottom by remember {
+        derivedStateOf {
+            val info = listState.layoutInfo
+            val visible = info.visibleItemsInfo
+            val total = info.totalItemsCount
+            visible.isNotEmpty() && total > 0 && visible.last().index >= total - 3
+        }
+    }
+
+    // ── eager auto-fill trigger (days 1-2, when content doesn't fill viewport) ─
+    val contentDoesNotFillViewport by remember {
+        derivedStateOf {
+            val info = listState.layoutInfo
+            val visible = info.visibleItemsInfo
+            if (visible.isEmpty()) return@derivedStateOf false
+            val lastVisible = visible.last().index
+            val total = info.totalItemsCount
+            // Content doesn't fill viewport when: last item is visible AND items don't reach the bottom
+            val contentHeight = visible.sumOf { it.size }
+            val viewportHeight = info.viewportEndOffset - info.viewportStartOffset
+            lastVisible == total - 1 && contentHeight <= viewportHeight
+        }
+    }
+
+    // Lazy load: trigger when near the bottom (scroll-driven, all days beyond cap)
+    LaunchedEffect(nearBottom) {
+        val s = state as? BoardUiState.Success ?: return@LaunchedEffect
+        if (nearBottom && s.canLoadMore && !s.loadingMore) {
+            vm.loadMore()
+        }
+    }
+
+    // Eager auto-fill: when sections < EAGER_AUTO_LOAD_DAYS and content doesn't fill screen
+    LaunchedEffect(state, contentDoesNotFillViewport) {
+        val s = state as? BoardUiState.Success ?: return@LaunchedEffect
+        if (
+            s.canLoadMore &&
+            !s.loadingMore &&
+            s.sections.size < EAGER_AUTO_LOAD_DAYS &&
+            contentDoesNotFillViewport
+        ) {
+            vm.loadMore()
+        }
+    }
+
+    val todayDate = remember { todayProvider() }
+
     LazyColumn(
+        state = listState,
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp),
@@ -141,10 +208,50 @@ fun StationBoardScreen(
                 item { EmptyState("Nu există trenuri înregistrate.") }
             is BoardUiState.Error ->
                 item { ErrorState(s.message) }
-            is BoardUiState.Success ->
-                items(s.board.entries) { entry ->
-                    BoardEntryRow(entry, kind, onTrainClick)
+            is BoardUiState.Success -> {
+                s.sections.forEach { day ->
+                    // Day separator header
+                    item(key = "header_${day.date.year}_${day.date.month}_${day.date.day}") {
+                        Text(
+                            text = dayLabel(day.date, todayDate),
+                            style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
+                        )
+                    }
+                    if (day.entries.isEmpty()) {
+                        item(key = "empty_${day.date.year}_${day.date.month}_${day.date.day}") {
+                            Text(
+                                text = "Niciun tren disponibil.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(bottom = 4.dp),
+                            )
+                        }
+                    } else {
+                        items(
+                            items = day.entries,
+                            key = { entry -> "${day.date.year}_${day.date.month}_${day.date.day}_${entry.trainNumber}_${entry.scheduledTime}" },
+                        ) { entry ->
+                            BoardEntryRow(entry, kind, onTrainClick)
+                        }
+                    }
                 }
+
+                // Load-more sentinel / spinner
+                item(key = "load_more_sentinel") {
+                    when {
+                        s.loadingMore ->
+                            Box(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                CircularProgressIndicator()
+                            }
+                        !s.canLoadMore -> { /* nothing — reached cap */ }
+                        else -> { /* nothing — lazy scroll triggers loadMore */ }
+                    }
+                }
+            }
         }
 
         item { /* bottom padding */ }
@@ -168,12 +275,24 @@ private fun BoardEntryRow(
                 text = entry.scheduledTime,
                 style = MaterialTheme.typography.bodyMedium,
             )
-            if (estimatedTime != null) {
-                Text(
-                    text = " ($estimatedTime)",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.error,
-                )
+            // Alignment column: always render the parenthetical when live data is present.
+            // on-time (delayMinutes == 0) → green "(la timp)"
+            // delayed (delayMinutes > 0) → red "(HH:MM)"
+            // no live data (delayMinutes == null) → nothing
+            when {
+                entry.delayMinutes == null -> { /* no live data — muted badge shown elsewhere */ }
+                estimatedTime != null ->
+                    Text(
+                        text = " ($estimatedTime)",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = DelayRed,
+                    )
+                else ->
+                    Text(
+                        text = " (la timp)",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = DelayGreen,
+                    )
             }
         }
         Surface(
