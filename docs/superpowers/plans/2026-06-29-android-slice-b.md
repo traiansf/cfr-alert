@@ -430,6 +430,38 @@ git commit -m "feat(infofer-client): generate bundled station dataset (data.gov.
 
 ---
 
+### Task 3b: Full station coordinate coverage + drop operational sub-points
+
+> Added mid-execution per user request ("there should be coordinates for all
+> stations; if not from the station, then from the city/village"). Amends Task 3's
+> generator and regenerates `StationsData.kt`. Full step-by-step in
+> `.superpowers/sdd/task-3b-brief.md`.
+
+**Files:**
+- Modify: `tools/stations-gen/src/main/kotlin/StationsGen.kt`
+- Regenerate (committed): `infofer-client/src/commonMain/kotlin/ro/trenuri/infofer/data/StationsData.kt`
+
+**What changes:**
+- **Drop operational sub-points** (Triaj / Post N / Ram. / Gr.X / Macazuri /
+  Atelier / Bif. / Tj. / P.M.) — print the dropped list and verify no real
+  station is caught.
+- **Multi-tier coordinate resolution** (first hit wins): OSM railway nodes
+  (widened to `railway=stop` and matched on `name`/`name:ro`/`official_name`/
+  `alt_name`/`short_name`) → OSM `place` nodes (city/town/village/hamlet/suburb)
+  → Nominatim (`"<name>, Romania"`, ≤1 req/s, UA) → curated overrides.
+- Name-cleaning candidates for matching: strip parenthetical `(…)` codes and
+  period-less `Hm`/`Hc`/`h` suffixes before slugging.
+- Coverage guard: abort-without-write if OSM railway+place matches < 800
+  (anti-regression); print a per-tier breakdown; list any still-null.
+
+**Verify:** operational points gone (`grep -E "Triaj|Gr\.|Ram\.|Post "` → none);
+Brasov/Bucuresti-Nord/Iasi present with coords; near-100% have `lat =`;
+`:infofer-client:jvmTest` green.
+
+**Commit:** `feat(stations-gen): full coordinate coverage (place-node + Nominatim fallback); drop operational sub-points`
+
+---
+
 ### Task 4: `InfoferClient.findStations(query)`
 
 **Files:**

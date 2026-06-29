@@ -85,12 +85,21 @@ which both itinerary search and the station board require.
   over ~1,000–1,500 stations.
 - **Coordinates (OpenStreetMap):** the `Station` model gains optional `lat`/`lon`
   (default `null`, backward-compatible). At **generation time** the conversion
-  script queries the OpenStreetMap **Overpass API** for Romanian
-  `railway=station`/`railway=halt` nodes and matches them to our stations by
-  normalized (de-diacriticized) name, bundling the coordinates. Coverage gaps
-  (unmatched stations) keep `null` coordinates and degrade gracefully (name
-  order, no distance sort). OSM data is **ODbL-licensed** → add attribution in
-  the app's About/README. Coordinates are bundled once; no runtime OSM calls.
+  script resolves coordinates for **every** passenger station via a multi-tier
+  fallback (first hit wins), bundling the result: (1) OSM **Overpass**
+  `railway=station|halt|stop` nodes matched by any name alias
+  (`name`/`name:ro`/`official_name`/`alt_name`/`short_name`); (2) OSM **place**
+  nodes (`city|town|village|hamlet|suburb`) matched by the station's locality
+  name — so a station inherits its city/village coordinates when its own railway
+  node isn't mapped; (3) **Nominatim** geocoding (`"<name>, Romania"`, ≤1 req/s,
+  proper User-Agent) for the final residual; (4) a curated **override** map
+  (e.g. Bucureşti Nord, Iaşi). **Operational sub-points** (Triaj, Post N, Ram.,
+  Gr.X, Macazuri, Atelier, Bif., Tj. / P.M.) — not real passenger stations — are
+  **dropped** from the dataset. A coverage guard aborts regeneration (without
+  overwriting) if OSM railway+place matches fall implausibly low, preventing a
+  transient Overpass outage from regressing the committed data. OSM data is
+  **ODbL-licensed** → add attribution in the app's About/README. Coordinates are
+  bundled once; no runtime OSM/Nominatim calls.
 - **Correctness gate (static, not runtime):** the conversion script validates a
   representative sample of derived slugs against infofer (and against the
   existing `itineraries-*`/`station-board-*` fixtures) so we never ship names
