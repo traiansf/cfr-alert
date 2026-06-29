@@ -56,7 +56,12 @@ private fun tryFetchOsm(url: String, client: HttpClient): Map<String, Pair<Doubl
             }
         }
         System.err.println("  → parsed ${out.size} OSM nodes")
-        out
+        if (out.isEmpty()) {
+            System.err.println("  ✗ $url returned 0 nodes — treating as failure, will try next endpoint")
+            null
+        } else {
+            out
+        }
     } catch (e: Exception) {
         System.err.println("  ✗ $url failed: ${e.message}")
         null
@@ -113,9 +118,32 @@ fun main() {
     System.err.println("After group-expansion: ${bySlug.size} unique slugs")
 
     // (b)+(c) Fetch OSM coordinates and match by slug.
-    val coords = fetchOsmCoords()
+    val coords = fetchOsmCoords().toMutableMap()
+
+    // Curated fallback coords for major stations that OSM tags under a different
+    // name than the timetable slug (fill-if-missing — never clobber a good OSM match).
+    val coordOverrides: Map<String, Pair<Double, Double>> = mapOf(
+        // "Bucureşti Nord" → OSM has it as "Gara de Nord" / doesn't match slug.
+        "Bucuresti-Nord" to (44.4456 to 26.0727),
+        // "Iaşi" → OSM node name mismatch with timetable slug.
+        "Iasi"           to (47.1690 to 27.5840),
+    )
+    coordOverrides.forEach { (slug, latlon) -> coords.putIfAbsent(slug, latlon) }
 
     // (d) Sort alphabetically by display name and emit Kotlin source.
+    // Coverage guard: count only real OSM matches (not override entries) to detect a
+    // degraded Overpass run before we overwrite the committed dataset.
+    val osmOnlyMatchCount = bySlug.keys.count { slug ->
+        coords[slug] != null && !coordOverrides.containsKey(slug)
+    }
+    if (osmOnlyMatchCount < 800) {
+        System.err.println(
+            "ERROR: OSM-only match count is $osmOnlyMatchCount — below the 800-station threshold. " +
+            "This indicates a degraded Overpass response. NOT writing StationsData.kt to prevent regression."
+        )
+        System.exit(1)
+    }
+
     val entries = bySlug.entries.sortedBy { it.value }
     val sb = StringBuilder()
     sb.appendLine("package ro.trenuri.infofer.data")
