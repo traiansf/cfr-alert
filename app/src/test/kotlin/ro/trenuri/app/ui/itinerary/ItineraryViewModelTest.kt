@@ -293,4 +293,118 @@ class ItineraryViewModelTest {
         assertTrue(s.sections[1].options.isEmpty())
         assertTrue(s.canLoadMore)
     }
+
+    // ── filter mode: DEPARTURE vs ARRIVAL ────────────────────────────────────
+
+    @Test fun filterMode_departure_hidesEnRoute_arrival_keepsThem() = runTest {
+        // now=11:00. Option: dep=08:00, arr=13:00.
+        // DEPARTURE mode → 08:00 < 11:00 → hidden (departed, filter on dep time).
+        // ARRIVAL mode   → 13:00 >= 11:00 → kept (still en route, filter on arr time).
+        val enRouteOpt = makeOption("08:00", "13:00")
+        val vm = vmWith(
+            provider = { _, _, _, _, _ -> listOf(enRouteOpt) },
+            todayProvider = { today },
+            nowProvider = { 11 * 60 }, // 11:00
+        )
+        vm.search(bn, bv, today); advanceUntilIdle()
+
+        val sDep = vm.state.value as ItineraryUiState.Success
+        assertTrue(sDep.sections.first().options.isEmpty(), "DEPARTURE mode must hide en-route option")
+
+        vm.setFilterMode(ItineraryFilterMode.ARRIVAL)
+        val sArr = vm.state.value as ItineraryUiState.Success
+        assertEquals(1, sArr.sections.first().options.size, "ARRIVAL mode must keep en-route option")
+        assertEquals(enRouteOpt, sArr.sections.first().options.single())
+    }
+
+    @Test fun filterMode_arrival_hidesAlreadyArrived() = runTest {
+        // now=14:00. Option: dep=08:00, arr=13:00. Both dep and arr have passed.
+        // ARRIVAL mode → 13:00 < 14:00 → hidden.
+        val arrivedOpt = makeOption("08:00", "13:00")
+        val vm = vmWith(
+            provider = { _, _, _, _, _ -> listOf(arrivedOpt) },
+            todayProvider = { today },
+            nowProvider = { 14 * 60 }, // 14:00
+        )
+        vm.search(bn, bv, today); advanceUntilIdle()
+
+        // Default is DEPARTURE; 08:00 < 14:00 → hidden already
+        val sDep = vm.state.value as ItineraryUiState.Success
+        assertTrue(sDep.sections.first().options.isEmpty())
+
+        vm.setFilterMode(ItineraryFilterMode.ARRIVAL)
+        val sArr = vm.state.value as ItineraryUiState.Success
+        assertTrue(sArr.sections.first().options.isEmpty(), "ARRIVAL mode must also hide fully-past option")
+    }
+
+    @Test fun setFilterMode_refiltersDayZeroWithoutRefetch_otherSectionsUnchanged() = runTest {
+        // Verifies: (a) no extra network call on setFilterMode, (b) other day-sections are untouched.
+        var callCount = 0
+        val enRouteOpt = makeOption("08:00", "13:00")
+        val futureOpt = makeOption("15:00", "17:00")
+        val vm = vmWith(
+            provider = { _, _, y, m, d ->
+                callCount++
+                val date = AppDate(y, m, d)
+                when (date) {
+                    today    -> listOf(enRouteOpt, futureOpt)
+                    tomorrow -> listOf(tomorrowOpt)
+                    else     -> emptyList()
+                }
+            },
+            todayProvider = { today },
+            nowProvider = { 11 * 60 }, // 11:00
+        )
+        vm.search(bn, bv, today); advanceUntilIdle()
+        vm.loadMore(); advanceUntilIdle()
+        val callsAfterLoad = callCount
+        assertEquals(2, callsAfterLoad, "expected 2 network calls (today + tomorrow)")
+
+        // DEPARTURE mode: enRoute (08:00) hidden, future (15:00) kept → 1 option
+        val s0 = vm.state.value as ItineraryUiState.Success
+        assertEquals(2, s0.sections.size)
+        assertEquals(1, s0.sections[0].options.size)
+        assertEquals("15:00", s0.sections[0].options.single().departureTime)
+        assertEquals(tomorrowOpt, s0.sections[1].options.single())
+
+        // Switch to ARRIVAL mode — must NOT trigger a new network call
+        vm.setFilterMode(ItineraryFilterMode.ARRIVAL)
+        assertEquals(callsAfterLoad, callCount, "setFilterMode must not trigger a network fetch")
+
+        // ARRIVAL mode: enRoute (arr=13:00 >= 11:00) kept, future (arr=17:00 >= 11:00) kept → 2 options
+        val s1 = vm.state.value as ItineraryUiState.Success
+        assertEquals(2, s1.sections.size)
+        assertEquals(2, s1.sections[0].options.size, "both options visible in ARRIVAL mode")
+        // Tomorrow section unchanged
+        assertEquals(tomorrowOpt, s1.sections[1].options.single(), "tomorrow section must be unchanged")
+    }
+
+    @Test fun setFilterMode_noOpWhenSameMode() = runTest {
+        val vm = vmWith(
+            provider = { _, _, _, _, _ -> listOf(opt) },
+            todayProvider = { today },
+            nowProvider = { 0 },
+        )
+        vm.search(bn, bv, today); advanceUntilIdle()
+        val stateBefore = vm.state.value
+        vm.setFilterMode(ItineraryFilterMode.DEPARTURE) // same as default → no-op
+        assertSame(stateBefore, vm.state.value, "state must not change when mode is unchanged")
+    }
+
+    @Test fun setFilterMode_nonTodayDate_noRefilter() = runTest {
+        // Searching for notToday → setFilterMode should be a no-op (no today filter).
+        val vm = vmWith(
+            provider = { _, _, _, _, _ -> listOf(makeOption("08:00", "10:00")) },
+            todayProvider = { today },
+            nowProvider = { 23 * 60 },
+        )
+        vm.search(bn, bv, notToday); advanceUntilIdle()
+        val s0 = vm.state.value as ItineraryUiState.Success
+        assertEquals(1, s0.sections.first().options.size, "no filter on non-today date")
+
+        vm.setFilterMode(ItineraryFilterMode.ARRIVAL)
+        val s1 = vm.state.value as ItineraryUiState.Success
+        // State may be re-emitted but options must remain unfiltered
+        assertEquals(1, s1.sections.first().options.size, "non-today date: setFilterMode must not filter options")
+    }
 }

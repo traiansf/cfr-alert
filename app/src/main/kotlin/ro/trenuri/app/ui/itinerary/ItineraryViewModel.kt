@@ -13,6 +13,7 @@ import ro.trenuri.app.ui.ErrorMessages
 import ro.trenuri.app.ui.common.AppDate
 import ro.trenuri.app.ui.common.Today
 import ro.trenuri.app.ui.common.isUpcoming
+import ro.trenuri.infofer.model.ItineraryOption
 import ro.trenuri.infofer.model.Station
 
 /** Maximum number of day-sections to load (day 0 + up to MAX_SECTIONS-1 more). */
@@ -31,6 +32,9 @@ class ItineraryViewModel(
     private val _state = MutableStateFlow<ItineraryUiState>(ItineraryUiState.Idle)
     val state: StateFlow<ItineraryUiState> = _state.asStateFlow()
 
+    private val _filterMode = MutableStateFlow(ItineraryFilterMode.DEPARTURE)
+    val filterMode: StateFlow<ItineraryFilterMode> = _filterMode.asStateFlow()
+
     private val _loadedFrom = MutableStateFlow<Station?>(null)
     val loadedFrom: StateFlow<Station?> = _loadedFrom.asStateFlow()
 
@@ -43,6 +47,32 @@ class ItineraryViewModel(
 
     /** Accumulated day-sections in chronological order. */
     private val sections = mutableListOf<ItineraryDay>()
+
+    /** Raw (unfiltered) options for the day-0 (search) date. */
+    private var rawTodayOptions: List<ItineraryOption> = emptyList()
+
+    /** The date that was passed to [search]; used to decide whether today-filtering applies. */
+    private var day0Date: AppDate? = null
+
+    /**
+     * Apply the current [filterMode] to [options] when [day0Date] equals today.
+     * For non-today dates (or when [day0Date] is unset) returns [options] unchanged.
+     *
+     * DEPARTURE mode: hide options whose delay-adjusted DEPARTURE has passed.
+     * ARRIVAL mode: hide options that have already ARRIVED (i.e. delay-adjusted arrival passed).
+     */
+    private fun filterToday(options: List<ItineraryOption>): List<ItineraryOption> {
+        if (day0Date != today()) return options
+        val nowMin = now()
+        return when (_filterMode.value) {
+            ItineraryFilterMode.DEPARTURE -> options.filter { option ->
+                isUpcoming(option.departureTime, option.legs.firstOrNull()?.delay?.minutes, nowMin)
+            }
+            ItineraryFilterMode.ARRIVAL -> options.filter { option ->
+                isUpcoming(option.arrivalTime, option.legs.lastOrNull()?.delay?.minutes, nowMin)
+            }
+        }
+    }
 
     fun search(from: Station, to: Station, date: AppDate) {
         if (from.slug.isBlank() || to.slug.isBlank()) return
@@ -57,14 +87,9 @@ class ItineraryViewModel(
             when (val r = repository.search(from.slug, to.slug, date)) {
                 is ItineraryResult.Success -> {
                     val isToday = date == today()
-                    val options = if (isToday) {
-                        val nowMin = now()
-                        r.options.filter { option ->
-                            isUpcoming(option.departureTime, option.legs.firstOrNull()?.delay?.minutes, nowMin)
-                        }
-                    } else {
-                        r.options
-                    }
+                    day0Date = date
+                    rawTodayOptions = r.options
+                    val options = filterToday(r.options)
                     sections.add(ItineraryDay(date, options))
                     _state.value = ItineraryUiState.Success(
                         sections = sections.toList(),
@@ -82,6 +107,27 @@ class ItineraryViewModel(
                 ItineraryResult.ParseError -> _state.value = ItineraryUiState.Error(messages.parse)
             }
         }
+    }
+
+    /**
+     * Switch between DEPARTURE and ARRIVAL filter modes.
+     *
+     * If the loaded day-0 is today, recomputes the day-0 section in place from
+     * [rawTodayOptions] using the new mode and re-emits [ItineraryUiState.Success].
+     * All other day-sections are left unchanged. No network call is made.
+     */
+    fun setFilterMode(mode: ItineraryFilterMode) {
+        if (_filterMode.value == mode) return
+        _filterMode.value = mode
+        // Only recompute if we have a live today section loaded
+        if (day0Date != today()) return
+        val current = _state.value as? ItineraryUiState.Success ?: return
+        val filteredDay0 = filterToday(rawTodayOptions)
+        val updatedSections = current.sections.toMutableList()
+        if (updatedSections.isNotEmpty()) {
+            updatedSections[0] = ItineraryDay(day0Date!!, filteredDay0)
+        }
+        _state.value = current.copy(sections = updatedSections.toList())
     }
 
     fun loadMore() {

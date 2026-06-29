@@ -20,6 +20,9 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -73,6 +76,7 @@ fun ItinerarySearchScreen(
     todayProvider: Today = koinInject(qualifier = named("today")),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
+    val filterMode by vm.filterMode.collectAsStateWithLifecycle()
     val loadedFrom by vm.loadedFrom.collectAsStateWithLifecycle()
     val loadedTo by vm.loadedTo.collectAsStateWithLifecycle()
     var from by remember { mutableStateOf(vm.loadedFrom.value) }
@@ -160,6 +164,25 @@ fun ItinerarySearchScreen(
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text("Caută")
+            }
+        }
+
+        if (date == todayDate) {
+            item {
+                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                    SegmentedButton(
+                        selected = filterMode == ItineraryFilterMode.DEPARTURE,
+                        onClick = { vm.setFilterMode(ItineraryFilterMode.DEPARTURE) },
+                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                        label = { Text("Plecare") },
+                    )
+                    SegmentedButton(
+                        selected = filterMode == ItineraryFilterMode.ARRIVAL,
+                        onClick = { vm.setFilterMode(ItineraryFilterMode.ARRIVAL) },
+                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                        label = { Text("Sosire") },
+                    )
+                }
             }
         }
 
