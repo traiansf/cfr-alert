@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.AssistChip
@@ -245,10 +246,12 @@ fun ItinerarySearchScreen(
                             )
                         }
                     } else {
-                        items(
+                        itemsIndexed(
                             items = day.options,
-                            key = { option -> "${day.date.year}_${day.date.month}_${day.date.day}_${option.departureTime}_${option.arrivalTime}" },
-                        ) { option ->
+                            // Index disambiguates options that share departure+arrival time on the
+                            // same day (otherwise duplicate LazyColumn keys crash on debug builds).
+                            key = { index, _ -> "${day.date.year}_${day.date.month}_${day.date.day}_$index" },
+                        ) { _, option ->
                             ItineraryOptionCard(option, onTrainClick)
                         }
                     }
