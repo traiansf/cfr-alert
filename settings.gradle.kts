@@ -9,3 +9,4 @@ dependencyResolutionManagement {
 
 include(":infofer-client")
 include(":app")
+include(":tools:stations-gen")
