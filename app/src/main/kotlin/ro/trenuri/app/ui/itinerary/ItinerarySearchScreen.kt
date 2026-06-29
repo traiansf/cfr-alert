@@ -3,6 +3,7 @@ package ro.trenuri.app.ui.itinerary
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,10 +11,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -21,6 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,19 +38,29 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.compose.koinInject
 import org.koin.core.qualifier.named
+import ro.trenuri.app.ui.DelayBanner
 import ro.trenuri.app.ui.common.AppDate
 import ro.trenuri.app.ui.common.DatePickerField
 import ro.trenuri.app.ui.common.EmptyState
 import ro.trenuri.app.ui.common.ErrorState
 import ro.trenuri.app.ui.common.LoadingState
-import ro.trenuri.app.ui.DelayBanner
+import ro.trenuri.app.ui.common.Today
 import ro.trenuri.app.ui.delayBannerOf
 import ro.trenuri.app.ui.history.QueryHistoryStore
 import ro.trenuri.app.ui.history.RouteQuery
 import ro.trenuri.app.ui.station.StationPickerField
 import ro.trenuri.infofer.model.ItineraryLeg
 import ro.trenuri.infofer.model.ItineraryOption
-import ro.trenuri.infofer.model.Station
+
+/** Returns the day-separator label: "Azi", "Mâine", or the formatted date. */
+private fun dayLabel(date: AppDate, todayDate: AppDate): String = when (date) {
+    todayDate -> "Azi"
+    todayDate.nextDay() -> "Mâine"
+    else -> date.format()
+}
+
+/** Number of day-sections to eagerly auto-load when content doesn't fill the viewport. */
+private const val EAGER_AUTO_LOAD_DAYS = 2
 
 @Composable
 fun ItinerarySearchScreen(
@@ -55,6 +69,7 @@ fun ItinerarySearchScreen(
     onDateChange: (AppDate) -> Unit,
     onTrainClick: (String) -> Unit,
     historyStore: QueryHistoryStore<RouteQuery> = koinInject(qualifier = named("history_rute")),
+    todayProvider: Today = koinInject(qualifier = named("today")),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val loadedFrom by vm.loadedFrom.collectAsStateWithLifecycle()
@@ -67,7 +82,57 @@ fun ItinerarySearchScreen(
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
 
+    val listState = rememberLazyListState()
+
+    // ── scroll-to-bottom lazy load trigger (day 3+) ───────────────────────────
+    val nearBottom by remember {
+        derivedStateOf {
+            val info = listState.layoutInfo
+            val visible = info.visibleItemsInfo
+            val total = info.totalItemsCount
+            visible.isNotEmpty() && total > 0 && visible.last().index >= total - 3
+        }
+    }
+
+    // ── eager auto-fill trigger (days 1-2, when content doesn't fill viewport) ─
+    val contentDoesNotFillViewport by remember {
+        derivedStateOf {
+            val info = listState.layoutInfo
+            val visible = info.visibleItemsInfo
+            if (visible.isEmpty()) return@derivedStateOf false
+            val lastVisible = visible.last().index
+            val total = info.totalItemsCount
+            val contentHeight = visible.sumOf { it.size }
+            val viewportHeight = info.viewportEndOffset - info.viewportStartOffset
+            lastVisible == total - 1 && contentHeight <= viewportHeight
+        }
+    }
+
+    // Lazy load: trigger when near the bottom (scroll-driven, all days beyond cap)
+    LaunchedEffect(nearBottom) {
+        val s = state as? ItineraryUiState.Success ?: return@LaunchedEffect
+        if (nearBottom && s.canLoadMore && !s.loadingMore) {
+            vm.loadMore()
+        }
+    }
+
+    // Eager auto-fill: when sections < EAGER_AUTO_LOAD_DAYS and content doesn't fill screen
+    LaunchedEffect(state, contentDoesNotFillViewport) {
+        val s = state as? ItineraryUiState.Success ?: return@LaunchedEffect
+        if (
+            s.canLoadMore &&
+            !s.loadingMore &&
+            s.sections.size < EAGER_AUTO_LOAD_DAYS &&
+            contentDoesNotFillViewport
+        ) {
+            vm.loadMore()
+        }
+    }
+
+    val todayDate = remember { todayProvider() }
+
     LazyColumn(
+        state = listState,
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp),
@@ -160,10 +225,50 @@ fun ItinerarySearchScreen(
                 item { EmptyState("Nu există rute disponibile.") }
             is ItineraryUiState.Error ->
                 item { ErrorState(s.message) }
-            is ItineraryUiState.Success ->
-                items(s.options) { option ->
-                    ItineraryOptionCard(option, onTrainClick)
+            is ItineraryUiState.Success -> {
+                s.sections.forEach { day ->
+                    // Day separator header
+                    item(key = "header_${day.date.year}_${day.date.month}_${day.date.day}") {
+                        Text(
+                            text = dayLabel(day.date, todayDate),
+                            style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
+                        )
+                    }
+                    if (day.options.isEmpty()) {
+                        item(key = "empty_${day.date.year}_${day.date.month}_${day.date.day}") {
+                            Text(
+                                text = "Nicio rută disponibilă.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(bottom = 4.dp),
+                            )
+                        }
+                    } else {
+                        items(
+                            items = day.options,
+                            key = { option -> "${day.date.year}_${day.date.month}_${day.date.day}_${option.departureTime}_${option.arrivalTime}" },
+                        ) { option ->
+                            ItineraryOptionCard(option, onTrainClick)
+                        }
+                    }
                 }
+
+                // Load-more sentinel / spinner
+                item(key = "load_more_sentinel") {
+                    when {
+                        s.loadingMore ->
+                            Box(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                CircularProgressIndicator()
+                            }
+                        !s.canLoadMore -> { /* nothing — reached cap */ }
+                        else -> { /* nothing — lazy scroll triggers loadMore */ }
+                    }
+                }
+            }
         }
 
         item { /* bottom padding */ }
