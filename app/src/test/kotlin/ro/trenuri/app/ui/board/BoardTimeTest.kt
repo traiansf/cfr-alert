@@ -84,4 +84,25 @@ class BoardTimeTest {
 
     @Test fun estimatedTimeOrNull_wrapsAtMidnight() =
         assertEquals("00:10", estimatedTimeOrNull("23:50", 20))
+
+    // ── malformed / empty input (defensive) ──────────────────────────────────
+
+    @Test fun toMinutesOfDay_emptyString_returnsNull() =
+        assertNull(toMinutesOfDay(""))
+
+    @Test fun toMinutesOfDay_noColon_returnsNull() =
+        assertNull(toMinutesOfDay("abc"))
+
+    @Test fun toMinutesOfDay_colonAtStart_returnsNull() =
+        assertNull(toMinutesOfDay(":30"))
+
+    @Test fun isUpcoming_emptyTime_returnsTrueNoThrow() =
+        // malformed time → keep the entry; must never throw
+        assertTrue(isUpcoming("", null, 600))
+
+    @Test fun estimatedTimeOrNull_emptyTime_returnsNull() =
+        assertNull(estimatedTimeOrNull("", 5))
+
+    @Test fun addMinutesWrap_emptyTime_returnsInputUnchanged() =
+        assertEquals("", addMinutesWrap("", 5))
 }

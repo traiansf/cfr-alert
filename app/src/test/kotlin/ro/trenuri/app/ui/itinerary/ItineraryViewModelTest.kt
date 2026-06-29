@@ -227,6 +227,26 @@ class ItineraryViewModelTest {
         assertFalse(after.canLoadMore, "canLoadMore must be false after error")
     }
 
+    // ── crash regression: empty departureTime must not throw ─────────────────
+
+    @Test fun todayFilter_emptyDepartureTime_keptNoThrow() = runTest {
+        // Reproduces the Predeal→Brașov crash: infofer returns an option whose
+        // time span can't be parsed → departureTime = "". Before the fix,
+        // isUpcoming("", ...) threw StringIndexOutOfBoundsException inside the
+        // coroutine. After the fix it returns true (keep) and no exception is thrown.
+        val emptyTimeOpt = makeOption(dep = "", arr = "10:45")
+        val vm = vmWith(
+            provider = { _, _, _, _, _ -> listOf(emptyTimeOpt, makeOption("12:00")) },
+            todayProvider = { today },
+            nowProvider = { 600 }, // 10:00 — would filter past options normally
+        )
+        vm.search(bn, bv, today); advanceUntilIdle()
+        val s = vm.state.value as ItineraryUiState.Success
+        // Both options kept: the empty-time one is never filtered (isUpcoming = true for it),
+        // the 12:00 one is genuinely upcoming at 10:00.
+        assertEquals(2, s.sections.first().options.size)
+    }
+
     @Test fun loadMore_guardedByLoadingMore() = runTest {
         val ioDispatcher = StandardTestDispatcher(testScheduler)
         val vm = ItineraryViewModel(
