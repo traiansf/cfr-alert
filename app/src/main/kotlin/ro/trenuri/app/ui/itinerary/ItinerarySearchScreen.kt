@@ -3,6 +3,7 @@ package ro.trenuri.app.ui.itinerary
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
@@ -37,6 +39,8 @@ import ro.trenuri.app.ui.common.DatePickerField
 import ro.trenuri.app.ui.common.EmptyState
 import ro.trenuri.app.ui.common.ErrorState
 import ro.trenuri.app.ui.common.LoadingState
+import ro.trenuri.app.ui.DelayBanner
+import ro.trenuri.app.ui.delayBannerOf
 import ro.trenuri.app.ui.history.QueryHistoryStore
 import ro.trenuri.app.ui.history.RouteQuery
 import ro.trenuri.app.ui.station.StationPickerField
@@ -172,7 +176,7 @@ private fun ItineraryOptionCard(
     onTrainClick: (String) -> Unit,
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
-        androidx.compose.foundation.layout.Column(
+        Column(
             modifier = Modifier.padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
@@ -197,31 +201,53 @@ private fun ItineraryOptionCard(
 
 @Composable
 private fun LegRow(leg: ItineraryLeg, onTrainClick: (String) -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Surface(
-            color = MaterialTheme.colorScheme.secondaryContainer,
-            shape = MaterialTheme.shapes.small,
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
+            Surface(
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                shape = MaterialTheme.shapes.small,
+            ) {
+                Text(
+                    text = leg.category.name,
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                    style = MaterialTheme.typography.labelSmall,
+                )
+            }
             Text(
-                text = leg.category.name,
-                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                style = MaterialTheme.typography.labelSmall,
+                text = leg.trainNumber,
+                modifier = Modifier.clickable { onTrainClick(leg.trainNumber) },
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Text(
+                text = "${leg.departureStation} ${leg.departureTime} → ${leg.arrivalStation} ${leg.arrivalTime}",
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.weight(1f),
             )
         }
-        Text(
-            text = leg.trainNumber,
-            modifier = Modifier.clickable { onTrainClick(leg.trainNumber) },
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.primary,
-        )
-        Text(
-            text = "${leg.departureStation} ${leg.departureTime} → ${leg.arrivalStation} ${leg.arrivalTime}",
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.weight(1f),
-        )
+        when (val banner = delayBannerOf(leg.delay)) {
+            is DelayBanner.NoLiveData -> Text(
+                text = "fără date live",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            is DelayBanner.OnTime -> Text(
+                text = "la timp",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color(0xFF2E7D32),
+            )
+            is DelayBanner.Delayed -> Text(
+                text = buildString {
+                    append("${banner.minutes} min întârziere")
+                    if (banner.reportedAt != null) append(" · raportat la ${banner.reportedAt}")
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
     }
 }

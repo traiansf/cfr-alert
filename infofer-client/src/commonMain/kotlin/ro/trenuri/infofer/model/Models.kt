@@ -41,7 +41,8 @@ data class ItineraryLeg(
     val departureStation: String,
     val departureTime: String,
     val arrivalStation: String,
-    val arrivalTime: String
+    val arrivalTime: String,
+    val delay: Delay? = null,
 )
 
 data class ItineraryOption(

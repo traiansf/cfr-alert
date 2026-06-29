@@ -8,6 +8,7 @@ import ro.trenuri.infofer.util.parseCategory
 
 object ItinerariesParser {
     private val TIME_RE = Regex("""\d{1,2}:\d{2}""")
+    private val DELAY_MIN_RE = Regex("""\+(\d+)\s*min""")
 
     fun parse(html: String): List<ItineraryOption> {
         val doc = Ksoup.parse(html)
@@ -32,9 +33,14 @@ object ItinerariesParser {
         val departureTime = timeSpans.firstOrNull()?.text()?.trim().orEmpty()
         val arrivalTime = timeSpans.lastOrNull()?.text()?.trim().orEmpty()
 
+        // Extract option-level live delay from the <!--Real time part--> section.
+        // span.color-darkgreen → on-time; span.color-firebrick → delayed (+N min).
+        // Fail gracefully: null if neither span is found.
+        val optionDelay = parseOptionDelay(el)
+
         // Legs come from the expandable detail section (hidden in page but fully present in DOM).
         val detailEl = el.selectFirst("div.div-itineraries-row-details")
-        val legs = if (detailEl != null) parseLegs(detailEl) else emptyList()
+        val legs = if (detailEl != null) parseLegs(detailEl, optionDelay) else emptyList()
         val changes = (legs.size - 1).coerceAtLeast(0)
 
         return ItineraryOption(
@@ -44,6 +50,27 @@ object ItinerariesParser {
             changes = changes,
             legs = legs,
         )
+    }
+
+    /**
+     * Extracts the live delay for this itinerary option.
+     * - div.text-0-8rem span.color-darkgreen → on-time → Delay(0, null)
+     * - div.text-0-8rem span.color-firebrick → delayed → parse "+N min" → Delay(N, null)
+     *   If firebrick is present but "+N min" cannot be parsed, return null (no live data).
+     * - neither found → null (no live data; fail gracefully)
+     */
+    private fun parseOptionDelay(el: Element): Delay? {
+        if (el.selectFirst("div.text-0-8rem span.color-darkgreen") != null) {
+            return Delay(minutes = 0, reportedAt = null)
+        }
+        val firebrick = el.selectFirst("div.text-0-8rem span.color-firebrick")
+        if (firebrick != null) {
+            val text = firebrick.text()
+            val minutes = DELAY_MIN_RE.find(text)?.groupValues?.get(1)?.toIntOrNull()
+                ?: return null  // firebrick found but no parseable minutes → fail gracefully
+            return Delay(minutes = minutes, reportedAt = null)
+        }
+        return null
     }
 
     /**
@@ -57,8 +84,10 @@ object ItinerariesParser {
      *
      * For a direct train: 3 items (station, train, station).
      * For N trains: 2*N+1 items alternating station / train / station.
+     *
+     * [optionDelay] is the option-level live delay and is propagated to every leg.
      */
-    private fun parseLegs(detailEl: Element): List<ItineraryLeg> {
+    private fun parseLegs(detailEl: Element, optionDelay: Delay? = null): List<ItineraryLeg> {
         val allLis = detailEl.select("li.list-group-item.list-group-item-itinerary-part")
         if (allLis.isEmpty()) return emptyList()
 
@@ -94,6 +123,7 @@ object ItinerariesParser {
                 departureTime = depTime,
                 arrivalStation = arrStation,
                 arrivalTime = arrTime,
+                delay = optionDelay,
             )
         }
     }
