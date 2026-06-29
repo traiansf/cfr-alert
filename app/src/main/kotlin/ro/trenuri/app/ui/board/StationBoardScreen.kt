@@ -28,6 +28,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.compose.koinInject
@@ -62,6 +64,8 @@ fun StationBoardScreen(
     var selectedStation by remember { mutableStateOf(vm.loadedStation.value) }
     var recentItems by remember { mutableStateOf(historyStore.recent()) }
     LaunchedEffect(loadedStation) { loadedStation?.let { selectedStation = it } }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
 
     LazyColumn(
         modifier = Modifier
@@ -74,6 +78,8 @@ fun StationBoardScreen(
                 label = "Stație",
                 onPicked = { station ->
                     selectedStation = station
+                    keyboardController?.hide()
+                    focusManager.clearFocus()
                     vm.load(station, date)
                     historyStore.add(StationQuery(station, kind))
                     recentItems = historyStore.recent()

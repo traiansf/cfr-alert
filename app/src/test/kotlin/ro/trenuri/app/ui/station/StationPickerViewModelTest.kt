@@ -49,4 +49,13 @@ class StationPickerViewModelTest {
         advanceUntilIdle()
         assertEquals(NearbyUiState.Ready(all), vm.nearby.value)
     }
+
+    @Test fun clearNearbyResetsToIdle() = runTest {
+        val vm = StationPickerViewModel(repo)
+        vm.loadNearby(45.0, 25.0)
+        advanceUntilIdle()
+        assertEquals(NearbyUiState.Ready(all), vm.nearby.value)
+        vm.clearNearby()
+        assertEquals(NearbyUiState.Idle, vm.nearby.value)
+    }
 }

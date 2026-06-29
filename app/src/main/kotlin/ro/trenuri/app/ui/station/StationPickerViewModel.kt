@@ -48,4 +48,9 @@ class StationPickerViewModel(private val repository: StationRepository) : ViewMo
             }
         }
     }
+
+    /** Reset GPS nearby results (call on station pick or when user starts typing). */
+    fun clearNearby() {
+        _nearby.value = NearbyUiState.Idle
+    }
 }

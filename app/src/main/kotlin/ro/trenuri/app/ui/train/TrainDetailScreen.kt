@@ -27,6 +27,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -63,6 +65,8 @@ fun TrainDetailScreen(
     var number by remember { mutableStateOf(viewModel.loadedNumber.value) }
     var recentItems by remember { mutableStateOf(historyStore.recent()) }
     LaunchedEffect(loadedNumber) { if (loadedNumber.isNotBlank()) number = loadedNumber }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
 
     Column(
         Modifier
@@ -83,6 +87,8 @@ fun TrainDetailScreen(
                 singleLine = true,
             )
             Button(onClick = {
+                keyboardController?.hide()
+                focusManager.clearFocus()
                 val trimmed = number.trim()
                 viewModel.load(trimmed, date)
                 if (trimmed.isNotBlank()) {

@@ -26,6 +26,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.compose.koinInject
@@ -58,6 +60,8 @@ fun ItinerarySearchScreen(
     var recentItems by remember { mutableStateOf(historyStore.recent()) }
     LaunchedEffect(loadedFrom) { loadedFrom?.let { from = it } }
     LaunchedEffect(loadedTo) { loadedTo?.let { to = it } }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
 
     LazyColumn(
         modifier = Modifier
@@ -103,6 +107,8 @@ fun ItinerarySearchScreen(
         item {
             Button(
                 onClick = {
+                    keyboardController?.hide()
+                    focusManager.clearFocus()
                     val f = from
                     val t = to
                     if (f != null && t != null) {
