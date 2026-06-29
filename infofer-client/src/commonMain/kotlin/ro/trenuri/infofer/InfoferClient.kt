@@ -1,5 +1,7 @@
 package ro.trenuri.infofer
 
+import ro.trenuri.infofer.data.LatLon
+import ro.trenuri.infofer.data.StationsDataset
 import ro.trenuri.infofer.model.*
 import ro.trenuri.infofer.net.InfoferSession
 import ro.trenuri.infofer.net.extractTokens
@@ -66,4 +68,9 @@ class InfoferClient(private val session: InfoferSession) {
         )
         return NearestStationsParser.parse(html)
     }
+
+    /** Resolve free-text station input to canonical stations (offline, in-memory).
+     *  When [near] is supplied, suggestions with coordinates are ordered by distance. */
+    fun findStations(query: String, near: LatLon? = null, limit: Int = 20): List<Station> =
+        StationsDataset.find(query, near, limit)
 }
