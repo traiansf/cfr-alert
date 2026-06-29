@@ -17,6 +17,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -26,6 +28,7 @@ import org.koin.core.qualifier.named
 import ro.trenuri.app.ui.TrainViewModel
 import ro.trenuri.app.ui.board.BoardViewModel
 import ro.trenuri.app.ui.board.StationBoardScreen
+import ro.trenuri.app.ui.common.AppDate
 import ro.trenuri.app.ui.common.Today
 import ro.trenuri.app.ui.itinerary.ItinerarySearchScreen
 import ro.trenuri.app.ui.itinerary.ItineraryViewModel
@@ -39,10 +42,12 @@ fun AppScaffold() {
     val boardVm: BoardViewModel = koinViewModel()
     val today: Today = koinInject(qualifier = named("today"))
 
-    // Per-tab date states — lifted so follow-callbacks carry the correct date
-    var trainDate by remember { mutableStateOf(today()) }
-    var itineraryDate by remember { mutableStateOf(today()) }
-    var boardDate by remember { mutableStateOf(today()) }
+    // Single shared date across all tabs — survives configuration changes
+    val appDateSaver = listSaver<AppDate, Int>(
+        save = { listOf(it.year, it.month, it.day) },
+        restore = { AppDate(it[0], it[1], it[2]) },
+    )
+    var selectedDate by rememberSaveable(stateSaver = appDateSaver) { mutableStateOf(today()) }
 
     val nav = remember {
         TabNavigator(
@@ -88,21 +93,21 @@ fun AppScaffold() {
             when (selected) {
                 Tab.TREN -> TrainDetailScreen(
                     viewModel = trainVm,
-                    date = trainDate,
-                    onDateChange = { trainDate = it },
-                    onStationClick = { station -> nav.openStation(station, trainDate) },
+                    date = selectedDate,
+                    onDateChange = { selectedDate = it },
+                    onStationClick = { station -> nav.openStation(station, selectedDate) },
                 )
                 Tab.RUTE -> ItinerarySearchScreen(
                     vm = itineraryVm,
-                    date = itineraryDate,
-                    onDateChange = { itineraryDate = it },
-                    onTrainClick = { number -> nav.openTrain(number, itineraryDate) },
+                    date = selectedDate,
+                    onDateChange = { selectedDate = it },
+                    onTrainClick = { number -> nav.openTrain(number, selectedDate) },
                 )
                 Tab.STATIE -> StationBoardScreen(
                     vm = boardVm,
-                    date = boardDate,
-                    onDateChange = { boardDate = it },
-                    onTrainClick = { number -> nav.openTrain(number, boardDate) },
+                    date = selectedDate,
+                    onDateChange = { selectedDate = it },
+                    onTrainClick = { number -> nav.openTrain(number, selectedDate) },
                 )
             }
         }
