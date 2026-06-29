@@ -1,5 +1,6 @@
-package ro.trenuri.app.ui
+package ro.trenuri.app.ui.train
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,6 +11,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -23,6 +25,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import ro.trenuri.app.ui.DelayBanner
+import ro.trenuri.app.ui.TrainUiState
+import ro.trenuri.app.ui.TrainViewModel
+import ro.trenuri.app.ui.common.AppDate
+import ro.trenuri.app.ui.common.DatePickerField
+import ro.trenuri.app.ui.common.Today
+import ro.trenuri.app.ui.delayBannerOf
+import ro.trenuri.infofer.model.Station
 import ro.trenuri.infofer.model.StopStatus
 import ro.trenuri.infofer.model.TrainBranch
 import ro.trenuri.infofer.model.TrainItinerary
@@ -31,20 +41,36 @@ import ro.trenuri.infofer.model.TrainStop
 private val Green = Color(0xFF1B5E20)
 private val Red = Color(0xFFB71C1C)
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TrainDetailScreen(viewModel: TrainViewModel) {
+fun TrainDetailScreen(
+    viewModel: TrainViewModel,
+    today: Today,
+    onStationClick: (Station) -> Unit,
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var number by remember { mutableStateOf("") }
+    var date by remember { mutableStateOf(today()) }
 
-    Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        DatePickerField(
+            date = date,
+            onDateChange = { date = it },
+        )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
                 value = number,
                 onValueChange = { number = it },
                 label = { Text("Număr tren") },
                 modifier = Modifier.weight(1f),
+                singleLine = true,
             )
-            Button(onClick = { viewModel.search(number) }) { Text("Caută") }
+            Button(onClick = { viewModel.load(number, date) }) { Text("Caută") }
         }
 
         when (val s = state) {
@@ -52,13 +78,16 @@ fun TrainDetailScreen(viewModel: TrainViewModel) {
             TrainUiState.Loading -> CircularProgressIndicator()
             TrainUiState.Empty -> Text("Trenul nu a fost găsit sau nu are date.")
             is TrainUiState.Error -> Text(s.message, color = Red)
-            is TrainUiState.Success -> TrainItineraryView(s.itinerary)
+            is TrainUiState.Success -> TrainItineraryView(s.itinerary, onStationClick)
         }
     }
 }
 
 @Composable
-private fun TrainItineraryView(itinerary: TrainItinerary) {
+private fun TrainItineraryView(
+    itinerary: TrainItinerary,
+    onStationClick: (Station) -> Unit,
+) {
     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item {
             Text(
@@ -68,7 +97,7 @@ private fun TrainItineraryView(itinerary: TrainItinerary) {
         }
         itinerary.branches.forEach { branch ->
             item { BranchHeader(branch) }
-            items(branch.stops) { stop -> StopRow(stop) }
+            items(branch.stops) { stop -> StopRow(stop, onStationClick) }
         }
     }
 }
@@ -89,7 +118,7 @@ private fun BranchHeader(branch: TrainBranch) {
 }
 
 @Composable
-private fun StopRow(stop: TrainStop) {
+private fun StopRow(stop: TrainStop, onStationClick: (Station) -> Unit) {
     val times = listOfNotNull(stop.arrival, stop.departure).joinToString(" / ")
     val details = buildList {
         stop.track?.let { add("linia $it") }
@@ -104,7 +133,9 @@ private fun StopRow(stop: TrainStop) {
         Text(times, color = statusColor)
         Text(
             text = stop.station.name + if (details.isNotEmpty()) "  $details" else "",
-            modifier = Modifier.weight(1f),
+            modifier = Modifier
+                .weight(1f)
+                .clickable { onStationClick(stop.station) },
         )
     }
 }
