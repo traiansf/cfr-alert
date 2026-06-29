@@ -27,6 +27,12 @@ android {
     kotlin {
         jvmToolchain(21)
     }
+
+    testOptions {
+        // android.util.Log (and other android.* stubs) return defaults instead of
+        // throwing in local JVM unit tests, so ViewModels that log don't fail tests.
+        unitTests.isReturnDefaultValues = true
+    }
 }
 
 dependencies {
