@@ -1,6 +1,6 @@
 [versions]
 kotlin = "2.2.21"
-agp = "8.7.3"
+agp = "8.13.2"
 ktor = "3.5.1"
 coroutines = "1.11.0"
 datetime = "0.6.2"
