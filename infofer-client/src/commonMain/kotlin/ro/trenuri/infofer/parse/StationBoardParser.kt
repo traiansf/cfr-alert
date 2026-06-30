@@ -25,7 +25,7 @@ import ro.trenuri.infofer.util.parseCategory
  *  - Train number: `a[href*=/ro-RO/Tren/]` href, last path segment before `?`.
  *  - Category: `[class*=span-train-category-]` className.
  *  - Real-time badge: `div.badge.div-stations-train-real-time-badge`
- *      - Delay: `+N min` pattern → N; null when "la timp" or badge absent.
+ *      - Delay: `+N min` pattern → N; 0 when "la timp" (on time); null when badge absent (no live data).
  *      - Track: `div.d-inline-block.ml-3` text with "linia {n}" → extracted track number/name.
  */
 object StationBoardParser {
@@ -80,8 +80,10 @@ object StationBoardParser {
         val badgeText = badge?.text()?.trim()
 
         val delayMinutes: Int? = when {
+            // No real-time badge at all (e.g. future-date boards) → no live data.
             badgeText == null -> null
-            badgeText.contains("la timp", ignoreCase = true) -> null
+            // "la timp" → live-confirmed on time (delay 0), distinct from no-live-data (null).
+            badgeText.contains("la timp", ignoreCase = true) -> 0
             else -> DELAY_RE.find(badgeText)?.groupValues?.get(1)?.toIntOrNull()
         }
 
