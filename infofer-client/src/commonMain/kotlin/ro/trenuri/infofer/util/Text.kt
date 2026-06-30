@@ -20,10 +20,15 @@ fun stationSlug(name: String): String =
         .replace(Regex("-+"), "-")
         .trim('-')
 
-fun formatInfoferDate(year: Int, month: Int, day: Int): String {
-    fun p(n: Int) = n.toString().padStart(2, '0')
-    return "${p(day)}.${p(month)}.$year 0:00:00"
-}
+private fun pad2(n: Int) = n.toString().padStart(2, '0')
+
+/** `DD.MM.YYYY 0:00:00` — the form infofer expects in POST result bodies. */
+fun formatInfoferDate(year: Int, month: Int, day: Int): String =
+    "${formatInfoferDateOnly(year, month, day)} 0:00:00"
+
+/** `DD.MM.YYYY` — the form infofer expects in the `?Date=` query of a feature GET page. */
+fun formatInfoferDateOnly(year: Int, month: Int, day: Int): String =
+    "${pad2(day)}.${pad2(month)}.$year"
 
 fun parseCategory(raw: String): TrainCategory {
     val t = raw.substringAfterLast("span-train-category-").trim().uppercase().replace("-", "")

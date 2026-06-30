@@ -7,6 +7,7 @@ import ro.trenuri.infofer.net.InfoferSession
 import ro.trenuri.infofer.net.extractTokens
 import ro.trenuri.infofer.parse.*
 import ro.trenuri.infofer.util.formatInfoferDate
+import ro.trenuri.infofer.util.formatInfoferDateOnly
 
 class InfoferClient(private val session: InfoferSession) {
 
@@ -52,7 +53,12 @@ class InfoferClient(private val session: InfoferSession) {
     suspend fun getStationBoard(
         stationName: String, kind: BoardKind, year: Int, month: Int, day: Int,
     ): StationBoard {
-        val page = session.getPage("/ro-RO/Statie/$stationName")
+        // The GET page must carry ?Date so the minted antiforgery token is bound to the
+        // requested date; otherwise infofer answers the StationsResult POST for a future
+        // date with a JS redirect stub instead of the board (today-only behaviour).
+        val page = session.getPage(
+            "/ro-RO/Statie/$stationName?Date=${formatInfoferDateOnly(year, month, day)}",
+        )
         val tokens = extractTokens(page)
         val html = session.postResult(
             "/ro-RO/Stations/StationsResult",
