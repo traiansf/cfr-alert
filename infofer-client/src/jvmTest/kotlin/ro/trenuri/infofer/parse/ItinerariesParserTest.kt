@@ -25,6 +25,40 @@ class ItinerariesParserTest {
         assertTrue(options.any { it.changes == 0 })
     }
 
+    @Test fun summary_times_parsed_when_not_color_gray() {
+        // Upcoming itineraries render the summary departure/arrival times as
+        // `text-1-4rem` WITHOUT `color-gray` (color-gray marks already-departed trains).
+        // The header must still show times for these — selector must not require color-gray.
+        val html = """
+            <ul>
+              <li id="li-itinerary-1">
+                <span class="text-1-4rem ">17:30</span>
+                <span class="text-1-4rem ">20:17</span>
+                <span class="text-1-4rem ">20:17</span>
+                <div class="div-itineraries-row-details">
+                  <ul>
+                    <li class="list-group-item list-group-item-itinerary-part">
+                      <div class="col-9">București Nord</div>
+                    </li>
+                    <li class="list-group-item list-group-item-itinerary-part">
+                      <span class="span-train-category-IR"></span>
+                      <a href="/ro-RO/Tren/16595">16595</a>
+                      <div class="div-itineraries-departure-arrival">Ple 17:30</div>
+                      <div class="div-itineraries-departure-arrival">Sos 20:17</div>
+                    </li>
+                    <li class="list-group-item list-group-item-itinerary-part">
+                      <div class="col-9">Brașov</div>
+                    </li>
+                  </ul>
+                </div>
+              </li>
+            </ul>
+        """.trimIndent()
+        val parsed = ItinerariesParser.parse(html)
+        assertEquals("17:30", parsed[0].departureTime, "departure time of an upcoming (non-gray) option")
+        assertEquals("20:17", parsed[0].arrivalTime, "arrival time of an upcoming (non-gray) option")
+    }
+
     @Test fun throws_when_containers_present_but_no_legs() {
         // One option container matching li[id^=li-itinerary-] but with no parseable legs (no detail section).
         val html = """<ul><li id="li-itinerary-1"></li></ul>"""

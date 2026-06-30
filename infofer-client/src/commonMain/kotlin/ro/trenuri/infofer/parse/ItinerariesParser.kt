@@ -24,12 +24,17 @@ object ItinerariesParser {
     }
 
     private fun parseOption(el: Element): ItineraryOption {
-        // Departure and arrival times are shown in span.text-1-4rem.color-gray in the outer summary:
+        // Departure and arrival times are shown in span.text-1-4rem in the outer summary:
         //   [0] = departure time (e.g. "4:41")
         //   [1] = arrival time (mobile, d-sm-none)
         //   [2] = arrival time (desktop, d-none d-sm-block) — same value
         // Taking first = departure, last = arrival covers both single- and multi-leg cases.
-        val timeSpans = el.select("span.text-1-4rem.color-gray")
+        // NOTE: the extra `color-gray` class only marks already-departed trains; upcoming
+        // trains use the bare `text-1-4rem` class, so the selector must NOT require color-gray
+        // (otherwise upcoming itineraries — exactly the ones a "today" filter shows — lose their
+        // header times). The leg/detail section uses text-1-1rem, so this stays scoped to the 3
+        // summary spans.
+        val timeSpans = el.select("span.text-1-4rem")
         val departureTime = timeSpans.firstOrNull()?.text()?.trim().orEmpty()
         val arrivalTime = timeSpans.lastOrNull()?.text()?.trim().orEmpty()
 
