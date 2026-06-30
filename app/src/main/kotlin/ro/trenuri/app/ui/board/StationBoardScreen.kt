@@ -5,9 +5,11 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -53,6 +55,11 @@ import ro.trenuri.infofer.model.Station
 
 private val DelayGreen = Color(0xFF1B5E20)
 private val DelayRed = Color(0xFFB71C1C)
+
+// Fixed widths for the leading time column so the category/number/destination columns
+// line up across every row regardless of the estimate/"la timp"/no-data state.
+private val ScheduledTimeWidth = 44.dp
+private val EstimateSlotWidth = 72.dp
 
 /** Returns the day-separator label: "Azi", "Mâine", or the formatted date. */
 private fun dayLabel(date: AppDate, todayDate: AppDate): String = when (date) {
@@ -252,25 +259,31 @@ private fun BoardEntryRow(
             Text(
                 text = entry.scheduledTime,
                 style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.width(ScheduledTimeWidth),
             )
-            // Alignment column: always render the parenthetical when live data is present.
-            // on-time (delayMinutes == 0) → green "(la timp)"
-            // delayed (delayMinutes > 0) → red "(HH:MM)"
-            // no live data (delayMinutes == null) → nothing
-            when {
-                entry.delayMinutes == null -> { /* no live data — muted badge shown elsewhere */ }
-                estimatedTime != null ->
-                    Text(
-                        text = " ($estimatedTime)",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = DelayRed,
-                    )
-                else ->
-                    Text(
-                        text = " (la timp)",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = DelayGreen,
-                    )
+            Spacer(Modifier.width(4.dp))
+            // Fixed-width slot so the columns after it align on every row:
+            //   delayed (delayMinutes > 0) → red "(HH:MM)" estimated time
+            //   on-time (delayMinutes == 0) → green "(la timp)"
+            //   no live data (delayMinutes == null) → empty, but still reserves the width
+            Box(modifier = Modifier.width(EstimateSlotWidth)) {
+                when {
+                    entry.delayMinutes == null -> { /* no live data — keep the slot empty */ }
+                    estimatedTime != null ->
+                        Text(
+                            text = "($estimatedTime)",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = DelayRed,
+                            maxLines = 1,
+                        )
+                    else ->
+                        Text(
+                            text = "(la timp)",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = DelayGreen,
+                            maxLines = 1,
+                        )
+                }
             }
         }
         Surface(
