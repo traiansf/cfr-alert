@@ -3,6 +3,7 @@ package ro.trenuri.app.ui.station
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocationOn
@@ -27,6 +28,10 @@ import org.koin.androidx.compose.koinViewModel
 import ro.trenuri.app.ui.common.ErrorState
 import ro.trenuri.app.ui.common.LoadingState
 import ro.trenuri.infofer.model.Station
+
+/** Caps the suggestion/nearby dropdown so it stays above the on-screen keyboard
+ *  (~5 rows at a time); the menu scrolls internally for the rest. */
+private val SUGGESTIONS_MAX_HEIGHT = 240.dp
 
 @Composable
 fun StationPickerField(
@@ -91,11 +96,14 @@ fun StationPickerField(
             )
 
             // Typeahead suggestions — PopupProperties(focusable = false) keeps the IME
-            // and focus on the text field while the list updates live.
+            // and focus on the text field while the list updates live. The height is
+            // capped (and the menu scrolls internally) so the list never grows over the
+            // on-screen keyboard, which would swallow taps meant for further typing.
             DropdownMenu(
                 expanded = expanded && suggestions.isNotEmpty(),
                 onDismissRequest = { expanded = false },
                 properties = PopupProperties(focusable = false),
+                modifier = Modifier.heightIn(max = SUGGESTIONS_MAX_HEIGHT),
             ) {
                 suggestions.forEach { station ->
                     DropdownMenuItem(
@@ -117,6 +125,7 @@ fun StationPickerField(
                 expanded = nearbyReady != null,
                 onDismissRequest = { vm.clearNearby() },
                 properties = PopupProperties(focusable = false),
+                modifier = Modifier.heightIn(max = SUGGESTIONS_MAX_HEIGHT),
             ) {
                 nearbyReady?.stations?.forEach { station ->
                     DropdownMenuItem(
