@@ -1,6 +1,5 @@
 package ro.trenuri.app.ui.board
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Job
@@ -63,19 +62,14 @@ class BoardViewModel(
     }
 
     fun loadMore() {
-        val current = _state.value as? BoardUiState.Success
-        if (current == null) { Log.d("BOARDDBG", "loadMore EARLY: state=${_state.value::class.simpleName}"); return }
-        if (current.loadingMore || !current.canLoadMore) { Log.d("BOARDDBG", "loadMore EARLY: loadingMore=${current.loadingMore} canLoadMore=${current.canLoadMore}"); return }
-        val station = lastStation
-        if (station == null) { Log.d("BOARDDBG", "loadMore EARLY: lastStation=null"); return }
-        val nextDate = sections.lastOrNull()?.date?.nextDay()
-        if (nextDate == null) { Log.d("BOARDDBG", "loadMore EARLY: nextDate=null sections=${sections.size}"); return }
-        Log.d("BOARDDBG", "loadMore FETCH $nextDate kind=${_kind.value} sections=${sections.size}")
+        val current = _state.value as? BoardUiState.Success ?: return
+        if (current.loadingMore || !current.canLoadMore) return
+        val station = lastStation ?: return
+        val nextDate = sections.lastOrNull()?.date?.nextDay() ?: return
 
         _state.value = current.copy(loadingMore = true)
         job = viewModelScope.launch {
             val r = repository.board(station.slug, _kind.value, nextDate)
-            Log.d("BOARDDBG", "loadMore RESULT=${r::class.simpleName}")
             when (r) {
                 is BoardResult.Success -> {
                     sections.add(BoardDay(nextDate, r.board.entries))
